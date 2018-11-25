@@ -1,3 +1,7 @@
+import GRDB
+
 struct GRDBDiff {
-    var text = "Hello, World!"
+    var sqliteVersion = try! DatabaseQueue().read {
+        try String.fetchOne($0, "SELECT sqlite_version()")
+    }
 }
