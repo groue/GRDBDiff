@@ -1,7 +1,7 @@
 import GRDB
 
 extension ValueObservation where Reducer == Void {
-    public func trackingSetDifferences<Request>(
+    func trackingSetDifferences<Request>(
         in request: Request,
         updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder = { Request.RowDecoder(row: $1) })
         -> ValueObservation<SetDifferencesReducer<Request.RowDecoder>>
@@ -11,6 +11,7 @@ extension ValueObservation where Reducer == Void {
     {
         return setDifferencesObservation(
             in: request,
+            fetch: { try Row.fetchAll($0, request) },
             key: request.primaryKey,
             makeElement: Request.RowDecoder.init(row:),
             updateElement: updateElement)
@@ -19,18 +20,18 @@ extension ValueObservation where Reducer == Void {
 
 // This function workarounds a compiler bug which prevents us to define it as a
 // static method in an extension of ValueObservation.
-private func setDifferencesObservation<Request>(
-    in request: Request,
+private func setDifferencesObservation<Element>(
+    in region: DatabaseRegionConvertible,
+    fetch: @escaping (Database) throws -> [Row],
     key: @escaping (Database) throws -> (Row) -> RowValue,
-    makeElement: @escaping (Row) -> Request.RowDecoder,
-    updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
-    -> ValueObservation<SetDifferencesReducer<Request.RowDecoder>>
-    where Request: FetchRequest
+    makeElement: @escaping (Row) -> Element,
+    updateElement: @escaping (Element, Row) -> Element)
+    -> ValueObservation<SetDifferencesReducer<Element>>
 {
-    return ValueObservation.tracking(request, reducer: { db in
+    return ValueObservation.tracking(region, reducer: { db in
         let key = try key(db)
-        return SetDifferencesReducer<Request.RowDecoder>(
-            fetch: { try Row.fetchAll($0, request) },
+        return SetDifferencesReducer<Element>(
+            fetch: fetch,
             key: key,
             makeElement: makeElement,
             updateElement: updateElement)
@@ -48,17 +49,8 @@ public struct SetDifferences<Element> {
 }
 
 public struct SetDifferencesReducer<Element>: ValueReducer {
-    private struct Item {
-        let key: RowValue
-        let row: Row
-        let element: Element
-    }
-    
     private let _fetch: (Database) throws -> [Row]
-    private let key: (Row) -> RowValue
-    private let makeElement: (Row) -> Element
-    private let updateElement: (Element, Row) -> Element
-    private var previousItems: [Item] = []
+    private var scanner: _SetDifferencesReducer<Element, Row, RowValue>
     
     fileprivate init(
         fetch: @escaping (Database) throws -> [Row],
@@ -67,9 +59,7 @@ public struct SetDifferencesReducer<Element>: ValueReducer {
         updateElement: @escaping (Element, Row) -> Element)
     {
         self._fetch = fetch
-        self.key = key
-        self.makeElement = makeElement
-        self.updateElement = updateElement
+        self.scanner = _SetDifferencesReducer(key: key, makeElement: makeElement, updateElement: updateElement)
     }
     
     /// :nodoc:
@@ -79,13 +69,42 @@ public struct SetDifferencesReducer<Element>: ValueReducer {
     
     /// :nodoc:
     public mutating func value(_ rows: [Row]) -> SetDifferences<Element>? {
+        return scanner.value(rows)
+    }
+}
+
+// Internal for testability
+/* private */ struct _SetDifferencesReducer<Element, Raw: Equatable, Key: Comparable> {
+    private struct Item {
+        let key: Key
+        let raw: Raw
+        let element: Element
+    }
+    
+    private let key: (Raw) -> Key
+    private let makeElement: (Raw) -> Element
+    private let updateElement: (Element, Raw) -> Element
+    private var previousItems: [Item] = []
+    
+    fileprivate init(
+        key: @escaping (Raw) -> Key,
+        makeElement: @escaping (Raw) -> Element,
+        updateElement: @escaping (Element, Raw) -> Element)
+    {
+        self.key = key
+        self.makeElement = makeElement
+        self.updateElement = updateElement
+    }
+    
+    /// :nodoc:
+    public mutating func value(_ raws: [Raw]) -> SetDifferences<Element>? {
         var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
         var nextItems: [Item] = []
         defer { self.previousItems = nextItems }
         
         for diffElement in DiffSequence(
             left: previousItems,
-            right: rows.map { (key: key($0), row: $0) },
+            right: raws.map { (key: key($0), raw: $0) },
             leftKey: { $0.key },
             rightKey: { $0.key })
         {
@@ -95,18 +114,18 @@ public struct SetDifferencesReducer<Element>: ValueReducer {
                 diff.deleted.append(prev.element)
             case .common(let prev, let new):
                 // Update
-                if new.row == prev.row {
+                if new.raw == prev.raw {
                     nextItems.append(prev)
                 } else {
-                    let newRecord = updateElement(prev.element, new.row)
-                    diff.updated.append(newRecord)
-                    nextItems.append(Item(key: prev.key, row: new.row, element: newRecord))
+                    let newElement = updateElement(prev.element, new.raw)
+                    diff.updated.append(newElement)
+                    nextItems.append(Item(key: prev.key, raw: new.raw, element: newElement))
                 }
             case .right(let new):
                 // Insertion
-                let record = makeElement(new.row)
-                diff.inserted.append(record)
-                nextItems.append(Item(key: new.key, row: new.row, element: record))
+                let element = makeElement(new.raw)
+                diff.inserted.append(element)
+                nextItems.append(Item(key: new.key, raw: new.raw, element: element))
             }
         }
         
