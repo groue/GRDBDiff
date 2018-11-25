@@ -11,27 +11,27 @@ extension ValueObservation where Reducer == Void {
     {
         return setDifferencesObservation(
             in: request,
-            primaryKey: { try request.primaryKey($0) },
+            key: request.primaryKey,
             makeElement: Request.RowDecoder.init(row:),
             updateElement: updateElement)
     }
 }
 
-// This function workarounds a compiler bug
+// This function workarounds a compiler bug which prevents us to define it as a
+// static method in an extension of ValueObservation.
 private func setDifferencesObservation<Request>(
     in request: Request,
-    primaryKey: @escaping (Database) throws -> (Row) -> [DatabaseValue],
+    key: @escaping (Database) throws -> (Row) -> RowValue,
     makeElement: @escaping (Row) -> Request.RowDecoder,
     updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
     -> ValueObservation<SetDifferencesReducer<Request.RowDecoder>>
     where Request: FetchRequest
 {
-    let request = AnyFetchRequest<Row>(request)
     return ValueObservation.tracking(request, reducer: { db in
-        let primaryKeyValues = try primaryKey(db)
+        let key = try key(db)
         return SetDifferencesReducer<Request.RowDecoder>(
-            fetch: request.fetchAll,
-            primaryKey: { RowValue(dbValues: primaryKeyValues($0)) },
+            fetch: { try Row.fetchAll($0, request) },
+            key: key,
             makeElement: makeElement,
             updateElement: updateElement)
         
@@ -49,28 +49,27 @@ public struct SetDifferences<Element> {
 
 public struct SetDifferencesReducer<Element>: ValueReducer {
     private struct Item {
-        let primaryKey: RowValue
+        let key: RowValue
         let row: Row
         let element: Element
     }
     
-    private let primaryKey: (Row) -> RowValue
     private let _fetch: (Database) throws -> [Row]
+    private let key: (Row) -> RowValue
     private let makeElement: (Row) -> Element
     private let updateElement: (Element, Row) -> Element
-    private var previousItems: [Item]
+    private var previousItems: [Item] = []
     
     fileprivate init(
         fetch: @escaping (Database) throws -> [Row],
-        primaryKey: @escaping (Row) -> RowValue,
+        key: @escaping (Row) -> RowValue,
         makeElement: @escaping (Row) -> Element,
         updateElement: @escaping (Element, Row) -> Element)
     {
-        self.primaryKey = primaryKey
         self._fetch = fetch
+        self.key = key
         self.makeElement = makeElement
         self.updateElement = updateElement
-        self.previousItems = []
     }
     
     /// :nodoc:
@@ -86,9 +85,9 @@ public struct SetDifferencesReducer<Element>: ValueReducer {
         
         for diffElement in DiffSequence(
             left: previousItems,
-            right: rows.map { (primaryKey: primaryKey($0), row: $0) },
-            leftKey: { $0.primaryKey },
-            rightKey: { $0.primaryKey })
+            right: rows.map { (key: key($0), row: $0) },
+            leftKey: { $0.key },
+            rightKey: { $0.key })
         {
             switch diffElement {
             case .left(let prev):
@@ -101,13 +100,13 @@ public struct SetDifferencesReducer<Element>: ValueReducer {
                 } else {
                     let newRecord = updateElement(prev.element, new.row)
                     diff.updated.append(newRecord)
-                    nextItems.append(Item(primaryKey: prev.primaryKey, row: new.row, element: newRecord))
+                    nextItems.append(Item(key: prev.key, row: new.row, element: newRecord))
                 }
             case .right(let new):
                 // Insertion
                 let record = makeElement(new.row)
                 diff.inserted.append(record)
-                nextItems.append(Item(primaryKey: new.primaryKey, row: new.row, element: record))
+                nextItems.append(Item(key: new.key, row: new.row, element: record))
             }
         }
         

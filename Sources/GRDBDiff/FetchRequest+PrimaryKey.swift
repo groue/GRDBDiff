@@ -9,7 +9,7 @@ extension FetchRequest where RowDecoder: TableRecord {
     ///         print(row) // <Row id:1, name:"arthur", score:1000>
     ///         primaryKey(row) // [1]
     ///     }
-    func primaryKey(_ db: Database) throws -> (Row) -> [DatabaseValue] {
+    func primaryKey(_ db: Database) throws -> (Row) -> RowValue {
         // Extract primary key columns
         let columns = try db.primaryKey(RowDecoder.databaseTableName).columns
         
@@ -24,6 +24,6 @@ extension FetchRequest where RowDecoder: TableRecord {
         }
         
         // Turn statement indexes into values
-        return { row in indexes.map { row[$0] } }
+        return { row in RowValue(dbValues: indexes.map { row[$0] }) }
     }
 }
