@@ -173,8 +173,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
         self.updateElement = updateElement
     }
     
-    /// :nodoc:
-    public mutating func value(_ raws: [Raw]) -> SetDifferences<Element>? {
+    mutating func value(_ raws: [Raw]) -> SetDifferences<Element>? {
         var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
         var newItems: [Item] = []
         defer { self.oldItems = newItems }
