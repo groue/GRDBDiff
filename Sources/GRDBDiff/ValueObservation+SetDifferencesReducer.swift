@@ -161,7 +161,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
     private let key: (Raw) -> Key
     private let makeElement: (Raw) -> Element
     private let updateElement: (Element, Raw) -> Element
-    private var previousItems: [Item] = []
+    private var oldItems: [Item] = []
     
     init(
         key: @escaping (Raw) -> Key,
@@ -176,33 +176,33 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
     /// :nodoc:
     public mutating func value(_ raws: [Raw]) -> SetDifferences<Element>? {
         var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
-        var nextItems: [Item] = []
-        defer { self.previousItems = nextItems }
-        
-        for diffElement in DiffSequence(
-            left: previousItems,
-            right: raws.map { (key: key($0), raw: $0) },
-            leftKey: { $0.key },
-            rightKey: { $0.key })
-        {
+        var newItems: [Item] = []
+        defer { self.oldItems = newItems }
+
+        let diffElements = DiffSequence(
+            old: oldItems,
+            new: raws.map { (key: key($0), raw: $0) },
+            oldKey: { $0.key },
+            newKey: { $0.key })
+
+        for diffElement in diffElements {
             switch diffElement {
-            case .left(let prev):
-                // Deletion
+            case .deleted(let prev):
                 diff.deleted.append(prev.element)
-            case .common(let prev, let new):
-                // Update
+
+            case .updated(let prev, let new):
                 if new.raw == prev.raw {
-                    nextItems.append(prev)
+                    newItems.append(prev)
                 } else {
                     let newElement = updateElement(prev.element, new.raw)
                     diff.updated.append(newElement)
-                    nextItems.append(Item(key: prev.key, raw: new.raw, element: newElement))
+                    newItems.append(Item(key: prev.key, raw: new.raw, element: newElement))
                 }
-            case .right(let new):
-                // Insertion
+
+            case .inserted(let new):
                 let element = makeElement(new.raw)
                 diff.inserted.append(element)
-                nextItems.append(Item(key: new.key, raw: new.raw, element: element))
+                newItems.append(Item(key: new.key, raw: new.raw, element: element))
             }
         }
         

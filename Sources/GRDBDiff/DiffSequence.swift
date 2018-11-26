@@ -1,6 +1,6 @@
-/// Given two sorted sequences (left and right), this function emits
-/// "diff elements" which tell whether elements are only found on the left, on
-/// the right, or on both sides.
+/// Given two sorted sequences (old and new), DiffSequence emits
+/// "diff elements" which tell whether elements are only found in the old
+/// sequence, in the new, or in both.
 ///
 /// Both sequences do not have to share the same element type. Yet elements must
 /// share a common comparable *key*.
@@ -9,88 +9,88 @@
 ///
 /// Keys must be unique in both sequences.
 ///
-/// The example below compare two sequences sorted by integer representation,
-/// and prints:
-///
-/// - Left: 1
-/// - Common: 2, 2
-/// - Common: 3, 3
-/// - Right: 4
+/// The example below compare two sequences sorted by integer representation:
 ///
 ///     for item in DiffSequence(
-///         left: [1,2,3],
-///         right: ["2", "3", "4"],
-///         leftKey: { $0 },
-///         rightKey: { Int($0)! })
+///         old: [1,2,3],
+///         new: ["2", "3", "4"],
+///         oldKey: { $0 },
+///         newKey: { Int($0)! })
 ///     {
 ///         switch item {
-///         case .left(let left):
-///             print("- Left: \(left)")
-///         case .right(let right):
-///             print("- Right: \(right)")
-///         case .common(let left, let right):
-///             print("- Common: \(left), \(right)")
+///         case .deleted(let old):
+///             print("- old: \(old)")
+///         case .updated(let old, let new):
+///             print("- updated: \(old), \(new)")
+///         case .inserted(let new):
+///             print("- new: \(new)")
 ///         }
 ///     }
-///
-/// - parameters:
-///     - left: The left sequence.
-///     - right: The right sequence.
-///     - leftKey: A function that returns the key of a left element.
-///     - rightKey: A function that returns the key of a right element.
-/// - returns: A sequence of diff items
-struct DiffSequence<Left: Sequence, Right: Sequence, Key: Comparable>: IteratorProtocol, Sequence {
+///     // Prints:
+///     // - deleted: 1
+///     // - updated: 2, 2
+///     // - updated: 3, 3
+///     // - inserted: 4
+struct DiffSequence<Old: Sequence, New: Sequence, Key: Comparable>: IteratorProtocol, Sequence {
     enum Element {
-        /// An element only found in the left sequence:
-        case left(Left.Element)
-        /// An element only found in the right sequence:
-        case right(Right.Element)
-        /// Left and right elements share a common key:
-        case common(Left.Element, Right.Element)
+        /// An element only found in the old sequence:
+        case deleted(Old.Element)
+        /// An element only found in the new sequence:
+        case inserted(New.Element)
+        /// Old and new elements share the same key:
+        case updated(Old.Element, New.Element)
     }
     
-    var lIter: Left.Iterator
-    var rIter: Right.Iterator
-    var lElem: Left.Element?
-    var rElem: Right.Element?
-    let lKey: (Left.Element) -> Key
-    let rKey: (Right.Element) -> Key
-    
+    var oldIter: Old.Iterator
+    var newIter: New.Iterator
+    var oldElem: Old.Element?
+    var newElem: New.Element?
+    let oldKey: (Old.Element) -> Key
+    let newKey: (New.Element) -> Key
+
+    /// Creates a DiffSequence.
+    ///
+    /// - parameters:
+    ///     - old: The old sequence.
+    ///     - new: The new sequence.
+    ///     - oldKey: A function that returns the key of an old element.
+    ///     - newKey: A function that returns the key of a new element.
     init(
-        left: Left,
-        right: Right,
-        leftKey: @escaping (Left.Element) -> Key,
-        rightKey: @escaping (Right.Element) -> Key)
+        old: Old,
+        new: New,
+        oldKey: @escaping (Old.Element) -> Key,
+        newKey: @escaping (New.Element) -> Key)
     {
-        lIter = left.makeIterator()
-        rIter = right.makeIterator()
-        lElem = lIter.next()
-        rElem = rIter.next()
-        lKey = leftKey
-        rKey = rightKey
+        self.oldIter = old.makeIterator()
+        self.newIter = new.makeIterator()
+        self.oldElem = oldIter.next()
+        self.newElem = newIter.next()
+        self.oldKey = oldKey
+        self.newKey = newKey
     }
     
     mutating func next() -> Element? {
-        switch (lElem, rElem) {
-        case (let lElem?, let rElem?):
-            let (lKey, rKey) = (self.lKey(lElem), self.rKey(rElem))
-            if lKey > rKey {
-                self.rElem = rIter.next()
-                return .right(rElem)
-            } else if lKey == rKey {
-                self.lElem = lIter.next()
-                self.rElem = rIter.next()
-                return .common(lElem, rElem)
+        switch (oldElem, newElem) {
+        case (let old?, let new?):
+            let oldKey = self.oldKey(old)
+            let newKey = self.newKey(new)
+            if oldKey > newKey {
+                self.newElem = newIter.next()
+                return .inserted(new)
+            } else if oldKey == newKey {
+                self.oldElem = oldIter.next()
+                self.newElem = newIter.next()
+                return .updated(old, new)
             } else {
-                self.lElem = lIter.next()
-                return .left(lElem)
+                self.oldElem = oldIter.next()
+                return .deleted(old)
             }
-        case (nil, let rElem?):
-            self.rElem = rIter.next()
-            return .right(rElem)
-        case (let lElem?, nil):
-            self.lElem = lIter.next()
-            return .left(lElem)
+        case (nil, let new?):
+            self.newElem = newIter.next()
+            return .inserted(new)
+        case (let old?, nil):
+            self.oldElem = oldIter.next()
+            return .deleted(old)
         case (nil, nil):
             return nil
         }
