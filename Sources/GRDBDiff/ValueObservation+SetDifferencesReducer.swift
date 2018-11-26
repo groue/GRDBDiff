@@ -78,7 +78,7 @@ public struct SetDifferences<Element> {
     public var inserted: [Element]
     public var updated: [Element]
     public var deleted: [Element]
-    public var isEmpty: Bool {
+    fileprivate var isEmpty: Bool {
         return inserted.isEmpty && updated.isEmpty && deleted.isEmpty
     }
 }
@@ -146,7 +146,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
     private let updateElement: (Element, Raw) -> Element
     private var previousItems: [Item] = []
     
-    fileprivate init(
+    init(
         key: @escaping (Raw) -> Key,
         makeElement: @escaping (Raw) -> Element,
         updateElement: @escaping (Element, Raw) -> Element)
