@@ -68,7 +68,6 @@ private func setDifferencesObservation<Element, Key>(
         return SetDifferencesReducer(
             fetch: fetch,
             key: key,
-            makeElement: { $0 },
             updateElement: updateElement)
 
     })
@@ -85,7 +84,7 @@ public struct SetDifferences<Element> {
 
 public struct SetDifferencesRowReducer<Element>: ValueReducer {
     private let _fetch: (Database) throws -> [Row]
-    private var scanner: _SetDifferencesReducer<Element, Row, RowValue>
+    private var _reducer: _SetDifferencesReducer<Element, Row, RowValue>
     
     fileprivate init(
         fetch: @escaping (Database) throws -> [Row],
@@ -94,7 +93,12 @@ public struct SetDifferencesRowReducer<Element>: ValueReducer {
         updateElement: @escaping (Element, Row) -> Element)
     {
         self._fetch = fetch
-        self.scanner = _SetDifferencesReducer(key: key, makeElement: makeElement, updateElement: updateElement)
+
+        // Create a _SetDifferencesReducer where:
+        // - Element: Element
+        // - Raw: Row
+        // - Key: RowValue
+        self._reducer = _SetDifferencesReducer(key: key, makeElement: makeElement, updateElement: updateElement)
     }
     
     /// :nodoc:
@@ -104,22 +108,26 @@ public struct SetDifferencesRowReducer<Element>: ValueReducer {
     
     /// :nodoc:
     public mutating func value(_ rows: [Row]) -> SetDifferences<Element>? {
-        return scanner.value(rows)
+        return _reducer.value(rows)
     }
 }
 
 public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueReducer {
     private let _fetch: (Database) throws -> [Element]
-    private var scanner: _SetDifferencesReducer<Element, Element, Key>
+    private var _reducer: _SetDifferencesReducer<Element, Element, Key>
 
     fileprivate init(
         fetch: @escaping (Database) throws -> [Element],
         key: @escaping (Element) -> Key,
-        makeElement: @escaping (Element) -> Element,
         updateElement: @escaping (Element, Element) -> Element)
     {
         self._fetch = fetch
-        self.scanner = _SetDifferencesReducer(key: key, makeElement: makeElement, updateElement: updateElement)
+
+        // Create a _SetDifferencesReducer where:
+        // - Element: Element
+        // - Raw: Element
+        // - Key: Key
+        self._reducer = _SetDifferencesReducer(key: key, makeElement: { $0 }, updateElement: updateElement)
     }
 
     /// :nodoc:
@@ -129,7 +137,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
 
     /// :nodoc:
     public mutating func value(_ elements: [Element]) -> SetDifferences<Element>? {
-        return scanner.value(elements)
+        return _reducer.value(elements)
     }
 }
 
