@@ -86,7 +86,9 @@ public struct SetDifferences<Element> {
     public var inserted: [Element]
     public var updated: [Element]
     public var deleted: [Element]
-    fileprivate var isEmpty: Bool {
+    
+    // Internal for testability
+    /* private */ var isEmpty: Bool {
         return inserted.isEmpty && updated.isEmpty && deleted.isEmpty
     }
 }
@@ -117,7 +119,12 @@ public struct SetDifferencesRowReducer<Element>: ValueReducer {
     
     /// :nodoc:
     public mutating func value(_ rows: [Row]) -> SetDifferences<Element>? {
-        return _reducer.value(rows)
+        let diff = _reducer.value(rows)
+        if diff.isEmpty {
+            return nil
+        } else {
+            return diff
+        }
     }
 }
 
@@ -146,7 +153,12 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
     
     /// :nodoc:
     public mutating func value(_ elements: [Element]) -> SetDifferences<Element>? {
-        return _reducer.value(elements)
+        let diff = _reducer.value(elements)
+        if diff.isEmpty {
+            return nil
+        } else {
+            return diff
+        }
     }
 }
 
@@ -173,7 +185,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
         self.updateElement = updateElement
     }
     
-    mutating func value(_ raws: [Raw]) -> SetDifferences<Element>? {
+    mutating func value(_ raws: [Raw]) -> SetDifferences<Element> {
         var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
         var newItems: [Item] = []
         defer { self.oldItems = newItems }
@@ -205,11 +217,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
                 newItems.append(Item(key: new.key, raw: new.raw, element: element))
             }
         }
-        
-        if diff.isEmpty {
-            return nil
-        } else {
-            return diff
-        }
+
+        return diff
     }
 }
