@@ -131,11 +131,6 @@ class _SetDifferencesReducerTests: XCTestCase {
                 return element })
 
         do {
-            let diff: SetDifferences<Element>? = reducer.value([])
-            XCTAssertNil(diff)
-        }
-
-        do {
             let diff = reducer.value([Raw(id: 1, name: "Arthur")])
             if let diff = diff {
                 XCTAssertEqual(diff.inserted.count, 1)
