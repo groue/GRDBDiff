@@ -10,7 +10,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         var reducer = _SetDifferencesReducer<String, Raw, Int>(
             key: { (raw: Raw) in raw.id },
             makeElement: { (raw: Raw) in raw.name },
-            updateElement: { (oldElement: String, raw: Raw) in raw.name })
+            updateElement: { (element: String, raw: Raw) in raw.name })
 
         do {
             let diff: SetDifferences<String>? = reducer.value([])
@@ -108,7 +108,88 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
     }
 
+    func testUpdateElement() {
+        struct Raw: Equatable {
+            var id: Int
+            var name: String
+        }
+        class Element {
+            var name: String
+            var reuseCount = 0
+
+            init(name: String) {
+                self.name = name
+            }
+        }
+
+        var reducer = _SetDifferencesReducer<Element, Raw, Int>(
+            key: { (raw: Raw) in raw.id },
+            makeElement: { (raw: Raw) in Element(name: raw.name) },
+            updateElement: { (element: Element, raw: Raw) in
+                element.name = raw.name
+                element.reuseCount += 1
+                return element })
+
+        do {
+            let diff: SetDifferences<Element>? = reducer.value([])
+            XCTAssertNil(diff)
+        }
+
+        do {
+            let diff = reducer.value([Raw(id: 1, name: "Arthur")])
+            if let diff = diff {
+                XCTAssertEqual(diff.inserted.count, 1)
+                XCTAssertEqual(diff.inserted[0].name, "Arthur")
+                XCTAssertEqual(diff.inserted[0].reuseCount, 0)
+                XCTAssertTrue(diff.updated.isEmpty)
+                XCTAssertTrue(diff.deleted.isEmpty)
+            } else {
+                XCTFail("Expected diff")
+            }
+        }
+
+        do {
+            let diff = reducer.value([Raw(id: 1, name: "Barbara")])
+            if let diff = diff {
+                XCTAssertTrue(diff.inserted.isEmpty)
+                XCTAssertEqual(diff.updated.count, 1)
+                XCTAssertEqual(diff.updated[0].name, "Barbara")
+                XCTAssertEqual(diff.updated[0].reuseCount, 1)
+                XCTAssertTrue(diff.deleted.isEmpty)
+            } else {
+                XCTFail("Expected diff")
+            }
+        }
+
+        do {
+            let diff = reducer.value([Raw(id: 1, name: "Craig")])
+            if let diff = diff {
+                XCTAssertTrue(diff.inserted.isEmpty)
+                XCTAssertEqual(diff.updated.count, 1)
+                XCTAssertEqual(diff.updated[0].name, "Craig")
+                XCTAssertEqual(diff.updated[0].reuseCount, 2)
+                XCTAssertTrue(diff.deleted.isEmpty)
+            } else {
+                XCTFail("Expected diff")
+            }
+        }
+
+        do {
+            let diff = reducer.value([])
+            if let diff = diff {
+                XCTAssertTrue(diff.inserted.isEmpty)
+                XCTAssertTrue(diff.updated.isEmpty)
+                XCTAssertEqual(diff.deleted.count, 1)
+                XCTAssertEqual(diff.deleted[0].name, "Craig")
+                XCTAssertEqual(diff.deleted[0].reuseCount, 2)
+            } else {
+                XCTFail("Expected diff")
+            }
+        }
+    }
+
     static var allTests = [
         ("testReducer", testReducer),
+        ("testUpdateElement", testUpdateElement),
         ]
 }
