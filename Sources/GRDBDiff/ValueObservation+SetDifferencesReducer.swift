@@ -187,16 +187,17 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
 
         for diffElement in diffElements {
             switch diffElement {
-            case .deleted(let prev):
-                diff.deleted.append(prev.element)
+            case .deleted(let old):
+                diff.deleted.append(old.element)
 
-            case .updated(let prev, let new):
-                if new.raw == prev.raw {
-                    newItems.append(prev)
+            case .updated(let old, let new):
+                if new.raw == old.raw {
+                    // unchanged
+                    newItems.append(old)
                 } else {
-                    let newElement = updateElement(prev.element, new.raw)
+                    let newElement = updateElement(old.element, new.raw)
                     diff.updated.append(newElement)
-                    newItems.append(Item(key: prev.key, raw: new.raw, element: newElement))
+                    newItems.append(Item(key: old.key, raw: new.raw, element: newElement))
                 }
 
             case .inserted(let new):
