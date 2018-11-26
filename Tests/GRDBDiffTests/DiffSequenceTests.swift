@@ -25,8 +25,8 @@ final class DiffSequenceTests: XCTestCase {
             "Common: 3",
             "Right: 4"])
     }
-
+    
     static var allTests = [
         ("testDiffSequence", testDiffSequence),
-    ]
+        ]
 }

@@ -9,14 +9,11 @@ extension ValueObservation where Reducer == Void {
         Request: FetchRequest,
         Request.RowDecoder: FetchableRecord & TableRecord
     {
-        return setDifferencesObservation(
+        return makeValueObservationTrackingSetDifferences(
             in: request,
-            fetch: { try Row.fetchAll($0, request) },
-            key: request.primaryKey,
-            makeElement: Request.RowDecoder.init(row:),
             updateElement: updateElement)
     }
-
+    
     public func trackingSetDifferences<Element, Key>(
         in regions: [DatabaseRegionConvertible],
         fetch: @escaping (Database) throws -> [Element],
@@ -25,7 +22,22 @@ extension ValueObservation where Reducer == Void {
         -> ValueObservation<SetDifferencesReducer<Element, Key>>
         where Element: Equatable, Key: Comparable
     {
-        return setDifferencesObservation(
+        return makeValueObservationTrackingSetDifferences(
+            in: regions,
+            fetch: fetch,
+            key: key,
+            updateElement: updateElement)
+    }
+    
+    public func trackingSetDifferences<Element, Key>(
+        in regions: DatabaseRegionConvertible...,
+        fetch: @escaping (Database) throws -> [Element],
+        key: @escaping (Element) -> Key,
+        updateElement: @escaping (Element, Element) -> Element = { $1 })
+        -> ValueObservation<SetDifferencesReducer<Element, Key>>
+        where Element: Equatable, Key: Comparable
+    {
+        return makeValueObservationTrackingSetDifferences(
             in: regions,
             fetch: fetch,
             key: key,
@@ -35,28 +47,26 @@ extension ValueObservation where Reducer == Void {
 
 // This function workarounds a compiler bug which prevents us to define it as a
 // static method in an extension of ValueObservation.
-private func setDifferencesObservation<Element>(
-    in region: DatabaseRegionConvertible,
-    fetch: @escaping (Database) throws -> [Row],
-    key: @escaping (Database) throws -> (Row) -> RowValue,
-    makeElement: @escaping (Row) -> Element,
-    updateElement: @escaping (Element, Row) -> Element)
-    -> ValueObservation<SetDifferencesRowReducer<Element>>
+private func makeValueObservationTrackingSetDifferences<Request>(
+    in request: Request,
+    updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
+    -> ValueObservation<SetDifferencesRowReducer<Request.RowDecoder>>
+    where
+    Request: FetchRequest,
+    Request.RowDecoder: FetchableRecord & TableRecord
 {
-    return ValueObservation.tracking(region, reducer: { db in
-        let key = try key(db)
-        return SetDifferencesRowReducer(
-            fetch: fetch,
-            key: key,
-            makeElement: makeElement,
+    return ValueObservation.tracking(request, reducer: { db in
+        try SetDifferencesRowReducer(
+            fetch: { try Row.fetchAll($0, request) },
+            key: request.primaryKey(db),
+            makeElement: Request.RowDecoder.init(row:),
             updateElement: updateElement)
-        
     })
 }
 
 // This function workarounds a compiler bug which prevents us to define it as a
 // static method in an extension of ValueObservation.
-private func setDifferencesObservation<Element, Key>(
+private func makeValueObservationTrackingSetDifferences<Element, Key>(
     in regions: [DatabaseRegionConvertible],
     fetch: @escaping (Database) throws -> [Element],
     key: @escaping (Element) -> Key,
@@ -64,12 +74,11 @@ private func setDifferencesObservation<Element, Key>(
     -> ValueObservation<SetDifferencesReducer<Element, Key>>
     where Element: Equatable, Key: Comparable
 {
-    return ValueObservation.tracking(regions, reducer: { db in
-        return SetDifferencesReducer(
+    return ValueObservation.tracking(regions, reducer: { _ in
+        SetDifferencesReducer(
             fetch: fetch,
             key: key,
             updateElement: updateElement)
-
     })
 }
 
@@ -93,7 +102,7 @@ public struct SetDifferencesRowReducer<Element>: ValueReducer {
         updateElement: @escaping (Element, Row) -> Element)
     {
         self._fetch = fetch
-
+        
         // Create a _SetDifferencesReducer where:
         // - Element: Element
         // - Raw: Row
@@ -115,26 +124,26 @@ public struct SetDifferencesRowReducer<Element>: ValueReducer {
 public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueReducer {
     private let _fetch: (Database) throws -> [Element]
     private var _reducer: _SetDifferencesReducer<Element, Element, Key>
-
+    
     fileprivate init(
         fetch: @escaping (Database) throws -> [Element],
         key: @escaping (Element) -> Key,
         updateElement: @escaping (Element, Element) -> Element)
     {
         self._fetch = fetch
-
+        
         // Create a _SetDifferencesReducer where:
         // - Element: Element
         // - Raw: Element
         // - Key: Key
         self._reducer = _SetDifferencesReducer(key: key, makeElement: { $0 }, updateElement: updateElement)
     }
-
+    
     /// :nodoc:
     public func fetch(_ db: Database) throws -> [Element] {
         return try _fetch(db)
     }
-
+    
     /// :nodoc:
     public mutating func value(_ elements: [Element]) -> SetDifferences<Element>? {
         return _reducer.value(elements)

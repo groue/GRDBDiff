@@ -11,12 +11,12 @@ class _SetDifferencesReducerTests: XCTestCase {
             key: { (raw: Raw) in raw.id },
             makeElement: { (raw: Raw) in raw.name },
             updateElement: { (element: String, raw: Raw) in raw.name })
-
+        
         do {
             let diff: SetDifferences<String>? = reducer.value([])
             XCTAssertNil(diff)
         }
-
+        
         do {
             let diff = reducer.value([
                 Raw(id: 1, name: "Arthur")
@@ -30,7 +30,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([
                 Raw(id: 1, name: "Barbara")
@@ -44,7 +44,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([
                 Raw(id: 2, name: "Craig")
@@ -59,7 +59,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([
                 Raw(id: 1, name: "David"),
@@ -77,7 +77,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([
                 Raw(id: 1, name: "Henri"),
@@ -96,7 +96,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([
                 Raw(id: 1, name: "Henri"),
@@ -107,7 +107,7 @@ class _SetDifferencesReducerTests: XCTestCase {
             XCTAssertNil(diff)
         }
     }
-
+    
     func testUpdateElement() {
         struct Raw: Equatable {
             var id: Int
@@ -116,12 +116,12 @@ class _SetDifferencesReducerTests: XCTestCase {
         class Element {
             var name: String
             var reuseCount = 0
-
+            
             init(name: String) {
                 self.name = name
             }
         }
-
+        
         var reducer = _SetDifferencesReducer<Element, Raw, Int>(
             key: { (raw: Raw) in raw.id },
             makeElement: { (raw: Raw) in Element(name: raw.name) },
@@ -129,7 +129,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 element.name = raw.name
                 element.reuseCount += 1
                 return element })
-
+        
         do {
             let diff = reducer.value([Raw(id: 1, name: "Arthur")])
             if let diff = diff {
@@ -142,7 +142,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([Raw(id: 1, name: "Barbara")])
             if let diff = diff {
@@ -155,7 +155,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([Raw(id: 1, name: "Craig")])
             if let diff = diff {
@@ -168,7 +168,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 XCTFail("Expected diff")
             }
         }
-
+        
         do {
             let diff = reducer.value([])
             if let diff = diff {
@@ -182,7 +182,7 @@ class _SetDifferencesReducerTests: XCTestCase {
             }
         }
     }
-
+    
     static var allTests = [
         ("testReducer", testReducer),
         ("testUpdateElement", testUpdateElement),
