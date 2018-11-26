@@ -119,7 +119,7 @@ public struct SetDifferencesRowReducer<Element>: ValueReducer {
     
     /// :nodoc:
     public mutating func value(_ rows: [Row]) -> SetDifferences<Element>? {
-        let diff = _reducer.value(rows)
+        let diff = _reducer.diff(rows)
         if diff.isEmpty {
             return nil
         } else {
@@ -153,7 +153,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
     
     /// :nodoc:
     public mutating func value(_ elements: [Element]) -> SetDifferences<Element>? {
-        let diff = _reducer.value(elements)
+        let diff = _reducer.diff(elements)
         if diff.isEmpty {
             return nil
         } else {
@@ -185,7 +185,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
         self.updateElement = updateElement
     }
     
-    mutating func value(_ raws: [Raw]) -> SetDifferences<Element> {
+    mutating func diff(_ raws: [Raw]) -> SetDifferences<Element> {
         var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
         var newItems: [Item] = []
         defer { self.oldItems = newItems }

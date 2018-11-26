@@ -13,12 +13,12 @@ class _SetDifferencesReducerTests: XCTestCase {
             updateElement: { (element: String, raw: Raw) in raw.name })
         
         do {
-            let diff: SetDifferences<String> = reducer.value([])
+            let diff: SetDifferences<String> = reducer.diff([])
             XCTAssertTrue(diff.isEmpty)
         }
         
         do {
-            let diff = reducer.value([
+            let diff = reducer.diff([
                 Raw(id: 1, name: "Arthur")
                 ])
             XCTAssertEqual(diff.inserted.count, 1)
@@ -28,7 +28,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([
+            let diff = reducer.diff([
                 Raw(id: 1, name: "Barbara")
                 ])
             XCTAssertTrue(diff.inserted.isEmpty)
@@ -38,7 +38,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([
+            let diff = reducer.diff([
                 Raw(id: 2, name: "Craig")
                 ])
             XCTAssertEqual(diff.inserted.count, 1)
@@ -49,7 +49,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([
+            let diff = reducer.diff([
                 Raw(id: 1, name: "David"),
                 Raw(id: 2, name: "Eugenia"),
                 Raw(id: 3, name: "Fiona"),
@@ -63,7 +63,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([
+            let diff = reducer.diff([
                 Raw(id: 1, name: "Henri"),
                 Raw(id: 3, name: "Irene"),
                 Raw(id: 5, name: "Jules"),
@@ -78,7 +78,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([
+            let diff = reducer.diff([
                 Raw(id: 1, name: "Henri"),
                 Raw(id: 3, name: "Irene"),
                 Raw(id: 5, name: "Jules"),
@@ -111,7 +111,7 @@ class _SetDifferencesReducerTests: XCTestCase {
                 return element })
         
         do {
-            let diff = reducer.value([Raw(id: 1, name: "Arthur")])
+            let diff = reducer.diff([Raw(id: 1, name: "Arthur")])
             XCTAssertEqual(diff.inserted.count, 1)
             XCTAssertEqual(diff.inserted[0].name, "Arthur")
             XCTAssertEqual(diff.inserted[0].reuseCount, 0)
@@ -120,7 +120,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([Raw(id: 1, name: "Barbara")])
+            let diff = reducer.diff([Raw(id: 1, name: "Barbara")])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
             XCTAssertEqual(diff.updated[0].name, "Barbara")
@@ -129,7 +129,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([Raw(id: 1, name: "Craig")])
+            let diff = reducer.diff([Raw(id: 1, name: "Craig")])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
             XCTAssertEqual(diff.updated[0].name, "Craig")
@@ -138,7 +138,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.value([])
+            let diff = reducer.diff([])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertTrue(diff.updated.isEmpty)
             XCTAssertEqual(diff.deleted.count, 1)
