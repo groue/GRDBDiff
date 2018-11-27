@@ -1,7 +1,7 @@
 import GRDB
 
 extension ValueObservation where Reducer == Void {
-    public func trackingSetDifferences<Request>(
+    public static func trackingSetDifferences<Request>(
         in request: Request,
         updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder = { Request.RowDecoder(row: $1) })
         -> ValueObservation<SetDifferencesRowReducer<Request.RowDecoder>>
@@ -14,23 +14,8 @@ extension ValueObservation where Reducer == Void {
             updateElement: updateElement)
     }
     
-    public func trackingSetDifferences<Element, Key>(
+    public static func trackingSetDifferences<Element, Key>(
         in regions: [DatabaseRegionConvertible],
-        fetch: @escaping (Database) throws -> [Element],
-        key: @escaping (Element) -> Key,
-        updateElement: @escaping (Element, Element) -> Element = { $1 })
-        -> ValueObservation<SetDifferencesReducer<Element, Key>>
-        where Element: Equatable, Key: Comparable
-    {
-        return makeValueObservationTrackingSetDifferences(
-            in: regions,
-            fetch: fetch,
-            key: key,
-            updateElement: updateElement)
-    }
-    
-    public func trackingSetDifferences<Element, Key>(
-        in regions: DatabaseRegionConvertible...,
         fetch: @escaping (Database) throws -> [Element],
         key: @escaping (Element) -> Key,
         updateElement: @escaping (Element, Element) -> Element = { $1 })
@@ -90,6 +75,15 @@ public struct SetDifferences<Element> {
     // Internal for testability
     /* private */ var isEmpty: Bool {
         return inserted.isEmpty && updated.isEmpty && deleted.isEmpty
+    }
+}
+
+extension SetDifferences: Equatable where Element: Equatable {
+    public static func == (lhs: SetDifferences, rhs: SetDifferences) -> Bool {
+        if lhs.inserted != rhs.inserted { return false }
+        if lhs.updated != rhs.updated { return false }
+        if lhs.deleted != rhs.deleted { return false }
+        return true
     }
 }
 
@@ -189,18 +183,20 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
         var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
         var newItems: [Item] = []
         defer { self.oldItems = newItems }
-
+        
         let diffElements = DiffSequence(
             old: oldItems,
             new: raws.map { (key: key($0), raw: $0) },
             oldKey: { $0.key },
             newKey: { $0.key })
-
+        
         for diffElement in diffElements {
             switch diffElement {
-            case .deleted(let old):
-                diff.deleted.append(old.element)
-
+            case .inserted(let new):
+                let element = makeElement(new.raw)
+                diff.inserted.append(element)
+                newItems.append(Item(key: new.key, raw: new.raw, element: element))
+                
             case .updated(let old, let new):
                 if new.raw == old.raw {
                     // unchanged
@@ -210,14 +206,12 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
                     diff.updated.append(newElement)
                     newItems.append(Item(key: old.key, raw: new.raw, element: newElement))
                 }
-
-            case .inserted(let new):
-                let element = makeElement(new.raw)
-                diff.inserted.append(element)
-                newItems.append(Item(key: new.key, raw: new.raw, element: element))
+                
+            case .deleted(let old):
+                diff.deleted.append(old.element)
             }
         }
-
+        
         return diff
     }
 }

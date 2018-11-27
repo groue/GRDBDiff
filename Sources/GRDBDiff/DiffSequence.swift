@@ -33,12 +33,12 @@
 ///     // - inserted: 4
 struct DiffSequence<Old: Sequence, New: Sequence, Key: Comparable>: IteratorProtocol, Sequence {
     enum Element {
-        /// An element only found in the old sequence:
-        case deleted(Old.Element)
         /// An element only found in the new sequence:
         case inserted(New.Element)
         /// Old and new elements share the same key:
         case updated(Old.Element, New.Element)
+        /// An element only found in the old sequence:
+        case deleted(Old.Element)
     }
     
     var oldIter: Old.Iterator
