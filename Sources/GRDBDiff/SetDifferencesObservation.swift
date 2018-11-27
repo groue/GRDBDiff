@@ -184,7 +184,7 @@ public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueR
         var newItems: [Item] = []
         defer { self.oldItems = newItems }
         
-        let diffElements = DiffSequence(
+        let diffElements = SetDifferencesSequence(
             old: oldItems,
             new: raws.map { (key: key($0), raw: $0) },
             oldKey: { $0.key },

@@ -1,4 +1,4 @@
-/// Given two sorted sequences (old and new), DiffSequence emits
+/// Given two sorted sequences (old and new), SetDifferencesSequence emits
 /// "diff elements" which tell whether elements are only found in the old
 /// sequence, in the new, or in both.
 ///
@@ -11,7 +11,7 @@
 ///
 /// The example below compare two sequences sorted by integer representation:
 ///
-///     for item in DiffSequence(
+///     for item in SetDifferencesSequence(
 ///         old: [1,2,3],
 ///         new: ["2", "3", "4"],
 ///         oldKey: { $0 },
@@ -31,7 +31,7 @@
 ///     // - updated: 2, 2
 ///     // - updated: 3, 3
 ///     // - inserted: 4
-struct DiffSequence<Old: Sequence, New: Sequence, Key: Comparable>: IteratorProtocol, Sequence {
+struct SetDifferencesSequence<Old: Sequence, New: Sequence, Key: Comparable>: IteratorProtocol, Sequence {
     enum Element {
         /// An element only found in the new sequence:
         case inserted(New.Element)
@@ -48,7 +48,7 @@ struct DiffSequence<Old: Sequence, New: Sequence, Key: Comparable>: IteratorProt
     let oldKey: (Old.Element) -> Key
     let newKey: (New.Element) -> Key
 
-    /// Creates a DiffSequence.
+    /// Creates a SetDifferencesSequence.
     ///
     /// - parameters:
     ///     - old: The old sequence.

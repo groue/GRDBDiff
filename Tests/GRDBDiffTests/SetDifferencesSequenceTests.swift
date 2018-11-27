@@ -1,7 +1,7 @@
 import XCTest
 @testable import GRDBDiff
 
-final class DiffSequenceTests: XCTestCase {
+final class SetDifferencesSequenceTests: XCTestCase {
     func testDiffSequence() {
         func assertDiff(
             from old: [Int],
@@ -10,7 +10,7 @@ final class DiffSequenceTests: XCTestCase {
             file: StaticString = #file, line: UInt = #line)
         {
             var elements: [String] = []
-            for element in DiffSequence(old: old, new: new, oldKey: { $0 }, newKey: { Int($0)! }) {
+            for element in SetDifferencesSequence(old: old, new: new, oldKey: { $0 }, newKey: { Int($0)! }) {
                 switch element {
                 case .deleted(let old):
                     elements.append("-\(old)")
