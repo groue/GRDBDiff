@@ -51,16 +51,16 @@ extension PlacesViewController {
                 }
             } else {
                 // Insert a place
-                if arc4random_uniform(2) == 0 {
+                if Bool.random() {
                     var place = Place(id: nil, coordinate: Place.randomCoordinate())
                     try place.insert(db)
                 }
                 // Delete a random place
-                if arc4random_uniform(2) == 0 {
+                if Bool.random() {
                     try Place.order(sql: "RANDOM()").limit(1).deleteAll(db)
                 }
                 // Update some places
-                for place in try Place.fetchAll(db) where arc4random_uniform(2) == 0 {
+                for place in try Place.fetchAll(db) where Bool.random() {
                     var place = place
                     place.latitude += 0.001 * (Double(arc4random()) / Double(UInt32.max) - 0.5)
                     place.longitude += 0.001 * (Double(arc4random()) / Double(UInt32.max) - 0.5)
