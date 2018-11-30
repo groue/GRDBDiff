@@ -36,14 +36,13 @@ extension PlacesViewController {
     }
     
     @IBAction func deletePlaces() {
-        try! dbPool.writeInTransaction { db in
-            try Place.deleteAll(db)
-            return .commit
+        try! dbPool.write { db in
+            _ = try Place.deleteAll(db)
         }
     }
     
     @IBAction func refresh() {
-        try! dbPool.writeInTransaction { db in
+        try! dbPool.write { db in
             if try Place.fetchCount(db) == 0 {
                 // Insert places
                 for _ in 0..<8 {
@@ -68,7 +67,6 @@ extension PlacesViewController {
                     try place.update(db)
                 }
             }
-            return .commit
         }
     }
     
