@@ -1,3 +1,4 @@
+import GRDB
 import MapKit
 
 // A map annotation that wraps a Place database record
@@ -8,6 +9,8 @@ final class PlaceAnnotation: NSObject, MKAnnotation {
         didSet { didChangeValue(forKey: "coordinate") }
     }
     
+    var nextPlace: Place?
+    
     @objc var coordinate: CLLocationCoordinate2D {
         return place.coordinate
     }
@@ -17,3 +20,15 @@ final class PlaceAnnotation: NSObject, MKAnnotation {
     }
 }
 
+// Turn PlaceAnnotation into a GRDB record, so that it can be observed
+extension PlaceAnnotation: FetchableRecord, PersistableRecord {
+    static let databaseTableName = Place.databaseTableName
+    
+    convenience init(row: Row) {
+        self.init(Place(row: row))
+    }
+    
+    func encode(to container: inout PersistenceContainer) {
+        place.encode(to: &container)
+    }
+}

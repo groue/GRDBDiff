@@ -4,7 +4,7 @@ import GRDB
 import GRDBDiff
 
 class PlacesViewController: UIViewController {
-    private var placesObserver: TransactionObserver?
+    private var annotationsObserver: TransactionObserver?
     
     @IBOutlet private var mapView: MKMapView!
     
@@ -84,22 +84,25 @@ extension PlacesViewController: MKMapViewDelegate {
     // MARK: - Map View
     
     private func setupMapView() {
-        let places = Place.orderByPrimaryKey()
-        placesObserver = try! ValueObservation
-            .trackingSetDifferences(in: places)
-            .start(in: dbPool) { [weak self] diff in self?.updateMapView(with: diff) }
+        let annotations = PlaceAnnotation.orderByPrimaryKey()
+        
+        let annotationObservation = ValueObservation.trackingSetDifferences(
+            in: annotations,
+            updateElement: { annotation, row in
+                annotation.nextPlace = Place(row: row)
+                return annotation
+        })
+        
+        annotationsObserver = try! annotationObservation.start(in: dbPool) { [weak self] diff in
+            self?.updateMapView(with: diff)
+        }
     }
     
-    private func updateMapView(with diff: SetDifferences<Place>) {
-        let insertedAnnotations = diff.inserted.map { PlaceAnnotation($0) }
-        mapView.addAnnotations(insertedAnnotations)
-        
-        let deletedAnnotations = diff.deleted.compactMap { findPlaceAnnotation(id: $0.id) }
-        mapView.removeAnnotations(deletedAnnotations)
-        
-        for updatedPlace in diff.updated {
-            let annotation = findPlaceAnnotation(id: updatedPlace.id)
-            annotation?.place = updatedPlace
+    private func updateMapView(with diff: SetDifferences<PlaceAnnotation>) {
+        mapView.addAnnotations(diff.inserted)
+        mapView.removeAnnotations(diff.deleted)
+        for updatedAnnotation in diff.updated {
+            updatedAnnotation.place = updatedAnnotation.nextPlace!
         }
         
         zoomOnPlaces(animated: true)
