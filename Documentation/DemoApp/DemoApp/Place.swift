@@ -51,16 +51,15 @@ extension Place {
 
 extension CLLocationCoordinate2D {
     static func random(withinDistance distance: CLLocationDistance, from center: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
-        let d = sqrt(Double.random(in: 0...1)) * distance
+        // Generate a random point within a circle (uniformly)
+        // https://stackoverflow.com/a/50746409/525656
+        let radius = sqrt(Double.random(in: 0...1)) * distance
         let angle = Double.random(in: 0...1) * 2 * .pi
-        let latitudinalMeters = d * cos(angle)
-        let longitudinalMeters = d * sin(angle)
-        let region = MKCoordinateRegion(
-            center: center,
-            latitudinalMeters: latitudinalMeters,
-            longitudinalMeters: longitudinalMeters)
+        let x = radius * cos(angle)
+        let y = radius * sin(angle)
+        let region = MKCoordinateRegion(center: center, latitudinalMeters: y, longitudinalMeters: x)
         return CLLocationCoordinate2D(
-            latitude: center.latitude + copysign(region.span.latitudeDelta, latitudinalMeters),
-            longitude: center.longitude + copysign(region.span.longitudeDelta, longitudinalMeters))
+            latitude: center.latitude + copysign(region.span.latitudeDelta, y),
+            longitude: center.longitude + copysign(region.span.longitudeDelta, x))
     }
 }
