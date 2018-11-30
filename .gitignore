@@ -2,3 +2,6 @@
 /.build
 /Packages
 /*.xcodeproj
+Documentation/DemoApp/DemoApp.xcworkspace
+Documentation/DemoApp/Pods
+Documentation/DemoApp/Podfile.lock

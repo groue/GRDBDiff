@@ -1,0 +1,154 @@
+import UIKit
+import MapKit
+import GRDB
+import GRDBDiff
+
+class PlacesViewController: UIViewController {
+    private var placesObserver: TransactionObserver?
+    
+    @IBOutlet private var mapView: MKMapView!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setupToolbar()
+        setupMapView()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        navigationController?.setToolbarHidden(false, animated: animated)
+        zoomOnPlaces(animated: false)
+    }
+}
+
+extension PlacesViewController {
+    
+    // MARK: - Actions
+    
+    private func setupToolbar() {
+        toolbarItems = [
+            UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlaces)),
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh)),
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
+        ]
+    }
+    
+    @IBAction func deletePlaces() {
+        try! dbPool.writeInTransaction { db in
+            try Place.deleteAll(db)
+            return .commit
+        }
+    }
+    
+    @IBAction func refresh() {
+        try! dbPool.writeInTransaction { db in
+            if try Place.fetchCount(db) == 0 {
+                // Insert places
+                for _ in 0..<8 {
+                    var place = Place(id: nil, coordinate: Place.randomCoordinate())
+                    try place.insert(db)
+                }
+            } else {
+                // Insert a place
+                if arc4random_uniform(2) == 0 {
+                    var place = Place(id: nil, coordinate: Place.randomCoordinate())
+                    try place.insert(db)
+                }
+                // Delete a random place
+                if arc4random_uniform(2) == 0 {
+                    try Place.order(sql: "RANDOM()").limit(1).deleteAll(db)
+                }
+                // Update some places
+                for place in try Place.fetchAll(db) where arc4random_uniform(2) == 0 {
+                    var place = place
+                    place.latitude += 0.001 * (Double(arc4random()) / Double(UInt32.max) - 0.5)
+                    place.longitude += 0.001 * (Double(arc4random()) / Double(UInt32.max) - 0.5)
+                    try place.update(db)
+                }
+            }
+            return .commit
+        }
+    }
+    
+    @IBAction func stressTest() {
+        for _ in 0..<50 {
+            DispatchQueue.global().async {
+                self.refresh()
+            }
+        }
+    }
+}
+
+extension PlacesViewController: MKMapViewDelegate {
+    
+    // MARK: - Map View
+    
+    private func setupMapView() {
+        let places = Place.orderByPrimaryKey()
+        placesObserver = try! ValueObservation
+            .trackingSetDifferences(in: places)
+            .start(in: dbPool) { [weak self] diff in self?.updateMapView(with: diff) }
+    }
+    
+    private func updateMapView(with diff: SetDifferences<Place>) {
+        let insertedAnnotations = diff.inserted.map { PlaceAnnotation($0) }
+        mapView.addAnnotations(insertedAnnotations)
+        
+        let deletedAnnotations = diff.deleted.compactMap { existingAnnotation($0.id!) }
+        mapView.removeAnnotations(deletedAnnotations)
+        
+        for updatedPlace in diff.updated {
+            let annotation = existingAnnotation(updatedPlace.id!)
+            annotation?.place = updatedPlace
+        }
+        
+        zoomOnPlaces(animated: true)
+    }
+    
+    private func zoomOnPlaces(animated: Bool) {
+        // Turn all annotations into zero-sized map rects, that we will union
+        // to build the zooming map rect.
+        let rects = mapView.annotations.map { annotation in
+            MKMapRect(
+                origin: MKMapPoint(annotation.coordinate),
+                size: MKMapSize(width: 0, height: 0))
+        }
+        
+        // No rect => no annotation => no zoom
+        guard let firstRect = rects.first else {
+            return
+        }
+        
+        // Union rects
+        let zoomRect = rects
+            .suffix(from: 1)
+            .reduce(firstRect) { $0.union($1) }
+        
+        // Zoom
+        mapView.setVisibleMapRect(
+            zoomRect,
+            edgePadding: UIEdgeInsets(top: 40, left: 40, bottom: 40, right: 40),
+            animated: animated)
+    }
+    
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if let view = mapView.dequeueReusableAnnotationView(withIdentifier: "annotation") {
+            return view
+        }
+        let view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "annotation")
+        view.displayPriority = .required // opt out of clustering in order to show *all* annotations
+        return view
+    }
+    
+    private func existingAnnotation(_ id: Int64) -> PlaceAnnotation? {
+        for annotation in mapView.annotations {
+            if let placeAnnotation = annotation as? PlaceAnnotation,
+                placeAnnotation.place.id == id {
+                return placeAnnotation
+            }
+        }
+        return nil
+    }
+}
