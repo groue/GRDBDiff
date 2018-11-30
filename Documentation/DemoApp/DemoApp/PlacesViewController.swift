@@ -94,11 +94,11 @@ extension PlacesViewController: MKMapViewDelegate {
         let insertedAnnotations = diff.inserted.map { PlaceAnnotation($0) }
         mapView.addAnnotations(insertedAnnotations)
         
-        let deletedAnnotations = diff.deleted.compactMap { existingAnnotation($0.id!) }
+        let deletedAnnotations = diff.deleted.compactMap { findPlaceAnnotation(id: $0.id) }
         mapView.removeAnnotations(deletedAnnotations)
         
         for updatedPlace in diff.updated {
-            let annotation = existingAnnotation(updatedPlace.id!)
+            let annotation = findPlaceAnnotation(id: updatedPlace.id)
             annotation?.place = updatedPlace
         }
         
@@ -140,7 +140,7 @@ extension PlacesViewController: MKMapViewDelegate {
         return view
     }
     
-    private func existingAnnotation(_ id: Int64) -> PlaceAnnotation? {
+    private func findPlaceAnnotation(id: Int64?) -> PlaceAnnotation? {
         for annotation in mapView.annotations {
             if let placeAnnotation = annotation as? PlaceAnnotation,
                 placeAnnotation.place.id == id {
