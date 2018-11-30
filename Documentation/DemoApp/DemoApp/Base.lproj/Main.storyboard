@@ -26,7 +26,7 @@
             </objects>
             <point key="canvasLocation" x="-473" y="23"/>
         </scene>
-        <!--Item 1-->
+        <!--GRDBDiff-->
         <scene sceneID="i2O-bl-HDm">
             <objects>
                 <viewController id="CQX-Ij-ZEX" customClass="PlacesViewController" customModule="DemoApp" customModuleProvider="target" sceneMemberID="viewController">
@@ -48,7 +48,7 @@
                         <viewLayoutGuide key="safeArea" id="1av-hf-zKO"/>
                     </view>
                     <tabBarItem key="tabBarItem" title="Item 1" id="Qv3-rW-Mwb"/>
-                    <navigationItem key="navigationItem" id="WBD-kT-rtg"/>
+                    <navigationItem key="navigationItem" title="GRDBDiff" id="WBD-kT-rtg"/>
                     <connections>
                         <outlet property="mapView" destination="ZFZ-fk-Qn9" id="TPO-5W-6UA"/>
                     </connections>
