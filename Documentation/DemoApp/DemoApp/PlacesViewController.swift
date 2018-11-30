@@ -109,7 +109,7 @@ extension PlacesViewController: MKMapViewDelegate {
             return view
         }
         let view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "annotation")
-        view.displayPriority = .required // opt out of clustering in order to show *all* annotations
+        view.displayPriority = .required // opt out of clustering in order to show all annotations
         return view
     }
     
