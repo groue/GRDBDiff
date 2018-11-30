@@ -55,7 +55,10 @@ extension CLLocationCoordinate2D {
         let angle = Double.random(in: 0...1) * 2 * .pi
         let latitudinalMeters = d * cos(angle)
         let longitudinalMeters = d * sin(angle)
-        let region = MKCoordinateRegion(center: center, latitudinalMeters: latitudinalMeters, longitudinalMeters: longitudinalMeters)
+        let region = MKCoordinateRegion(
+            center: center,
+            latitudinalMeters: latitudinalMeters,
+            longitudinalMeters: longitudinalMeters)
         return CLLocationCoordinate2D(
             latitude: center.latitude + copysign(region.span.latitudeDelta, latitudinalMeters),
             longitude: center.longitude + copysign(region.span.longitudeDelta, longitudinalMeters))
