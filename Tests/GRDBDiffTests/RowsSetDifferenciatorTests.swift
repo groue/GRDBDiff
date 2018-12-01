@@ -1,13 +1,13 @@
 import XCTest
 @testable import GRDBDiff
 
-class _SetDifferencesReducerTests: XCTestCase {
+class RowsSetDifferenciatorTests: XCTestCase {
     func testReducer() {
         struct Raw: Equatable {
             var id: Int
             var name: String
         }
-        var reducer = _SetDifferencesReducer<String, Raw, Int>(
+        var reducer = RowsSetDifferenciator<String, Raw, Int>(
             key: { (raw: Raw) in raw.id },
             initialElements: [],
             makeElement: { (raw: Raw) in raw.name },
@@ -103,7 +103,7 @@ class _SetDifferencesReducerTests: XCTestCase {
             }
         }
         
-        var reducer = _SetDifferencesReducer<Element, Raw, Int>(
+        var reducer = RowsSetDifferenciator<Element, Raw, Int>(
             key: { (raw: Raw) in raw.id },
             initialElements: [],
             makeElement: { (raw: Raw) in Element(name: raw.name) },
