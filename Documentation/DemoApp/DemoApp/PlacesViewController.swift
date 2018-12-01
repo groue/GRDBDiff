@@ -95,11 +95,13 @@ extension PlacesViewController: MKMapViewDelegate {
         // We'll use the ValueObservation.setDifferences(...) method
         // provided by GRDBDiff.
         //
-        // Its first parameter is a database request of observed records,
-        // ordered by primary key. We have made our PlaceAnnotation a GRDB
-        // record, so the request is easy to build:
+        // It can compute diffs from arrays of records ordered by primary key.
+        // So let's observe database annotations, correctly ordered:
         let annotationsRequest = PlaceAnnotation.orderByPrimaryKey()
+        let annotationsObservation = ValueObservation.trackingAll(annotationsRequest)
         
+        // Now let's care of inserted, deleted, and updated annotations.
+        //
         // The map may already contain place annotations. The differences have
         // to take them in account.
         //
@@ -107,36 +109,33 @@ extension PlacesViewController: MKMapViewDelegate {
         // parameter, which is an array ordered by primary key:
         let initialAnnotations = mapView.annotations
             .compactMap { $0 as? PlaceAnnotation }
-            .sorted { $0.place.id! < $1.place.id! }
+            .sorted { $0.identity < $1.identity }
         
-        // Now let's set up the database observation.
+        // Removing and adding annotations in a map view is straightforward.
+        // But updating annotations needs a special care:
         //
-        // Map view annotations need a special care: when annotations are
-        // modified, it is not a good practice to remove the old version from
-        // the map, and add the new version. It does not provide good visual
-        // results. Instead, it is better to modify the annotation in place: the
-        // MKMapView uses Key-Value Observation in order to update the
-        // annotation view accordingly.
+        // It is not a good practice to replace the annotation by removing an
+        // old version and adding the new one: it does not provide good
+        // visual results.
         //
-        // Such modifications of annotations must happen on the
-        // main thread.
+        // Instead, it is better to reuse and modify the updated annotation.
+        // The MKMapView uses Key-Value Observation in order to update the
+        // annotation view accordingly. Such modifications of annotations must
+        // happen on the main thread.
         //
-        // So let's ask the observation to reuse an annotation when it is
-        // modified: this is the `updateElement` parameter. But don't update
-        // the annotation right away: wait until we are back on the main queue
-        // before we modify the annotation on the map (this will happen in
-        // updateMapView(with:) below.
-        let annotationObservation = ValueObservation.setDifferences(
-            in: annotationsRequest,
+        // So let's reuse annotations, and wait until we are back on the main
+        // queue before we modify the annotation on the map (this will happen
+        // in the updateMapView(with:) method below.
+        let diffObservation = annotationsObservation.setDifferences(
             initialElements: initialAnnotations,
-            updateElement: { annotation, row in
+            updateElement: { reusedAnnotation, newAnnotation in
                 // Not on the main queue here
-                annotation.nextPlace = Place(row: row)
-                return annotation
+                reusedAnnotation.nextCoordinate = newAnnotation.coordinate
+                return reusedAnnotation
         })
         
         // Start the database observation.
-        annotationsObserver = try! annotationObservation.start(in: dbPool) { [weak self] diff in
+        annotationsObserver = try! diffObservation.start(in: dbPool) { [weak self] diff in
             self?.updateMapView(with: diff)
         }
     }
@@ -147,7 +146,7 @@ extension PlacesViewController: MKMapViewDelegate {
         for annotation in diff.updated {
             // Modify the annotation now, on the main thread.
             // See setupMapView() for a longer explanation.
-            annotation.place = annotation.nextPlace!
+            annotation.coordinate = annotation.nextCoordinate!
         }
         
         zoomOnPlaces(animated: true)
@@ -187,58 +186,37 @@ extension PlacesViewController: MKMapViewDelegate {
         view.displayPriority = .required
         return view
     }
-    
-    private func findPlaceAnnotation(id: Int64?) -> PlaceAnnotation? {
-        for annotation in mapView.annotations {
-            if let placeAnnotation = annotation as? PlaceAnnotation,
-                placeAnnotation.place.id == id {
-                return placeAnnotation
-            }
-        }
-        return nil
-    }
 }
 
-/// A map annotation that wraps a Place database record.
-private final class PlaceAnnotation: NSObject, MKAnnotation {
-    /// The Place record that provides the coordinate of the annotation.
-    ///
-    /// The MKAnnotation documentation says:
-    ///
-    /// https://developer.apple.com/documentation/mapkit/mkannotation/1429528-setcoordinate
-    /// > [...] you must update the value of the coordinate in a key-value observing
-    /// > (KVO) compliant way.
-    var place: Place {
-        // Support MKMapView key-value observing on coordinates
-        willSet { willChangeValue(forKey: "coordinate") }
-        didSet { didChangeValue(forKey: "coordinate") }
-    }
+/// A map annotation.
+///
+/// It adopts all the proocols we need in PlacesViewController.setupMapView().
+///
+/// - MKAnnotation so that it can feed the map view.
+/// - FetchableRecord makes it possible to fetch annotations from the database.
+/// - TableRecord makes it possible to define the
+///   `PlaceAnnotation.orderByPrimaryKey()` observed request.
+/// - Identifiable makes it possible to use the
+///   `ValueObservation.setDifferences(...)` method.
+private final class PlaceAnnotation:
+    NSObject, MKAnnotation, FetchableRecord, TableRecord, Identifiable
+{
+    /// Part of the TableRecord protocol
+    static let databaseTableName = Place.databaseTableName
+
+    /// The annotation coordinate, KVO-compliant.
+    @objc dynamic var coordinate: CLLocationCoordinate2D
     
     /// Used during database observation. See PlacesViewController.setupMapView().
-    var nextPlace: Place?
+    var nextCoordinate: CLLocationCoordinate2D?
     
-    /// The annotation coordinate, KVO-compliant.
-    @objc var coordinate: CLLocationCoordinate2D {
-        return place.coordinate
-    }
-    
-    init(_ place: Place) {
-        self.place = place
-    }
-}
+    /// Part of the Identifiable protocol
+    var identity: Int64
 
-/// Turn PlaceAnnotation into a GRDB record, so that it can be observed in
-/// PlacesViewController.setupMapView().
-///
-/// Just inherit record configuration from the wrapped Place type.
-extension PlaceAnnotation: FetchableRecord, PersistableRecord {
-    static let databaseTableName = Place.databaseTableName
-    
-    convenience init(row: Row) {
-        self.init(Place(row: row))
-    }
-    
-    func encode(to container: inout PersistenceContainer) {
-        place.encode(to: &container)
+    /// Part of the FetchableRecord protocol
+    init(row: Row) {
+        let place = Place(row: row)
+        self.coordinate = place.coordinate
+        self.identity = place.id! // not nil because the place comes from the database
     }
 }
