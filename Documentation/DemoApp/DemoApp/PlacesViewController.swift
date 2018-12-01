@@ -226,9 +226,14 @@ extension PlacesViewController: MKMapViewDelegate {
         let zoomRect = rects.dropFirst().reduce(firstRect) { $0.union($1) }
         
         // Zoom
+        let topToolbarHeight = topToolbar.frame.height
         mapView.setVisibleMapRect(
             zoomRect,
-            edgePadding: UIEdgeInsets(top: 40, left: 40, bottom: 40, right: 40),
+            edgePadding: UIEdgeInsets(
+                top: 40 + topToolbarHeight,
+                left: 40,
+                bottom: 40,
+                right: 40),
             animated: animated)
     }
     
