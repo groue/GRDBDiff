@@ -2,6 +2,7 @@
 /.build
 /Packages
 /*.xcodeproj
+/Package.resolved
 xcuserdata
 Documentation/DemoApp/DemoApp.xcworkspace
 Documentation/DemoApp/Pods
