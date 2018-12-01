@@ -3,76 +3,71 @@ import GRDB
 extension ValueObservation where Reducer == Void {
     public static func setDifferences<Request>(
         in request: Request,
-        initialElements: [Request.RowDecoder] = [],
         updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder = { Request.RowDecoder(row: $1) })
         -> ValueObservation<SetDifferencesRowReducer<Request.RowDecoder>>
         where
         Request: FetchRequest,
-        Request.RowDecoder: FetchableRecord & MutablePersistableRecord
+        Request.RowDecoder: FetchableRecord & TableRecord
     {
         return setDifferencesObservation(
             in: request,
-            initialElements: initialElements,
-            updateElement: updateElement)
-    }
-    
-    public static func setDifferences<Element, Key>(
-        in regions: [DatabaseRegionConvertible],
-        fetch: @escaping (Database) throws -> [Element],
-        key: @escaping (Element) -> Key,
-        initialElements: [Element] = [],
-        updateElement: @escaping (Element, Element) -> Element = { $1 })
-        -> ValueObservation<SetDifferencesReducer<Element, Key>>
-        where Element: Equatable, Key: Comparable
-    {
-        return setDifferencesObservation(
-            in: regions,
-            fetch: fetch,
-            key: key,
-            initialElements: initialElements,
             updateElement: updateElement)
     }
 }
 
-// This function workarounds a compiler bug which prevents us to define it as a
-// static method in an extension of ValueObservation.
+/// Support for ValueObservation<Void>.setDifferences(in:updateElement:)
+///
+/// This function workarounds a compiler bug which prevents us to define it as a
+/// static method in an extension of ValueObservation.
 private func setDifferencesObservation<Request>(
     in request: Request,
-    initialElements: [Request.RowDecoder],
     updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
     -> ValueObservation<SetDifferencesRowReducer<Request.RowDecoder>>
     where
     Request: FetchRequest,
-    Request.RowDecoder: FetchableRecord & MutablePersistableRecord
+    Request.RowDecoder: FetchableRecord & TableRecord
 {
     return ValueObservation.tracking(request, reducer: { db in
         try SetDifferencesRowReducer(
             fetch: { try Row.fetchAll($0, request) },
             key: request.primaryKey(db),
-            initialElements: initialElements.map { (Row($0.databaseDictionary), $0) },
+            initialElements: [],
             makeElement: Request.RowDecoder.init(row:),
             updateElement: updateElement)
     })
 }
 
-// This function workarounds a compiler bug which prevents us to define it as a
-// static method in an extension of ValueObservation.
-private func setDifferencesObservation<Element, Key>(
-    in regions: [DatabaseRegionConvertible],
-    fetch: @escaping (Database) throws -> [Element],
-    key: @escaping (Element) -> Key,
-    initialElements: [Element],
-    updateElement: @escaping (Element, Element) -> Element)
-    -> ValueObservation<SetDifferencesReducer<Element, Key>>
-    where Element: Equatable, Key: Comparable
+public protocol _RecordsReducer: ValueReducer {
+    associatedtype _Record
+}
+extension ValueReducers.Records: _RecordsReducer {
+    public typealias _Record = Record
+}
+extension ValueObservation where
+    Reducer: _RecordsReducer,
+    Reducer.Value == [Reducer._Record],
+    Reducer._Record: Equatable & Identifiable,
+    Reducer._Record.Identity: Comparable
 {
-    return ValueObservation.tracking(regions, reducer: { _ in
-        SetDifferencesReducer(
-            fetch: fetch,
-            key: key,
-            initialElements: initialElements,
+    public func setDifferences(
+        initialElements: [Reducer._Record] = [],
+        updateElement: @escaping (Reducer._Record, Reducer._Record) -> Reducer._Record = { $1 })
+        -> ValueObservation<CompactMapValueReducer<Reducer, SetDifferences<Reducer._Record>>>
+    {
+        var reducer = _SetDifferencesReducer<Reducer._Record, Reducer._Record, Reducer._Record.Identity>(
+            key: { $0.identity },
+            initialElements: initialElements.map { ($0, $0) },
+            makeElement: { $0 },
             updateElement: updateElement)
-    })
+        return compactMap { elements -> SetDifferences<Reducer._Record>? in
+            let diff = reducer.diff(elements)
+            if diff.isEmpty {
+                return nil
+            } else {
+                return diff
+            }
+        }
+    }
 }
 
 public struct SetDifferences<Element> {
@@ -127,45 +122,6 @@ public struct SetDifferencesRowReducer<Element>: ValueReducer {
     /// :nodoc:
     public mutating func value(_ rows: [Row]) -> SetDifferences<Element>? {
         let diff = _reducer.diff(rows)
-        if diff.isEmpty {
-            return nil
-        } else {
-            return diff
-        }
-    }
-}
-
-public struct SetDifferencesReducer<Element: Equatable, Key: Comparable>: ValueReducer {
-    private let _fetch: (Database) throws -> [Element]
-    private var _reducer: _SetDifferencesReducer<Element, Element, Key>
-    
-    fileprivate init(
-        fetch: @escaping (Database) throws -> [Element],
-        key: @escaping (Element) -> Key,
-        initialElements: [Element],
-        updateElement: @escaping (Element, Element) -> Element)
-    {
-        self._fetch = fetch
-        
-        // Create a _SetDifferencesReducer where:
-        // - Element: Element
-        // - Raw: Element
-        // - Key: Key
-        self._reducer = _SetDifferencesReducer(
-            key: key,
-            initialElements: initialElements.map { ($0, $0) },
-            makeElement: { $0 },
-            updateElement: updateElement)
-    }
-    
-    /// :nodoc:
-    public func fetch(_ db: Database) throws -> [Element] {
-        return try _fetch(db)
-    }
-    
-    /// :nodoc:
-    public mutating func value(_ elements: [Element]) -> SetDifferences<Element>? {
-        let diff = _reducer.diff(elements)
         if diff.isEmpty {
             return nil
         } else {

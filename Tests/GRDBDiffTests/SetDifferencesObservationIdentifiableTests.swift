@@ -2,50 +2,48 @@ import XCTest
 import GRDB
 @testable import GRDBDiff
 
-private struct Player: Codable, Equatable, FetchableRecord, PersistableRecord {
+private struct Player: Codable, Equatable, FetchableRecord, PersistableRecord, Identifiable {
     var id: Int64
     var name: String
+    
+    var identity: Int64 {
+        return id
+    }
 }
 
-private final class PlayerClass: Equatable, FetchableRecord, PersistableRecord, CustomStringConvertible {
+private final class PlayerClass: Equatable, FetchableRecord, PersistableRecord, Identifiable {
     var player: Player
-    var reuseCount: Int
+    var updateCount: Int
     
-    var description: String {
-        return String(describing: player) + " (reuseCount: \(reuseCount))"
+    var identity: Int64 {
+        return player.identity
     }
-    
-    init(id: Int64, name: String, reuseCount: Int = 0) {
+
+    init(id: Int64, name: String, updateCount: Int = 0) {
         self.player = Player(id: id, name: name)
-        self.reuseCount = reuseCount
+        self.updateCount = updateCount
     }
 
     static let databaseTableName = Player.databaseTableName
     
     init(row: Row) {
         self.player = Player(row: row)
-        self.reuseCount = 0
+        self.updateCount = 0
     }
     
     func encode(to container: inout PersistenceContainer) {
         player.encode(to: &container)
     }
     
-    func updated(from row: Row) -> PlayerClass {
-        let updated = PlayerClass(row: row)
-        updated.reuseCount = reuseCount + 1
-        return updated
-    }
-
     static func == (lhs: PlayerClass, rhs: PlayerClass) -> Bool {
         if lhs.player != rhs.player { return false }
-        if lhs.reuseCount != rhs.reuseCount { return false }
+        if lhs.updateCount != rhs.updateCount { return false }
         return true
     }
 }
 
-final class SetDifferencesObservationTests: XCTestCase {
-    func testRequestSetDifferences() throws {
+final class SetDifferencesObservationIdentifiableTests: XCTestCase {
+    func testSetDifferences() throws {
         let dbQueue = DatabaseQueue()
         try dbQueue.write { db in
             try db.create(table: "player") { t in
@@ -88,7 +86,9 @@ final class SetDifferencesObservationTests: XCTestCase {
         expectation.expectedFulfillmentCount = expectedDiffs.count
         
         let request = Player.all().orderByPrimaryKey()
-        let observation = ValueObservation.setDifferences(in: request)
+        let observation = ValueObservation
+            .trackingAll(request)
+            .setDifferences()
         let observer = try observation.start(in: dbQueue) { diff in
             diffs.append(diff)
             expectation.fulfill()
@@ -118,7 +118,7 @@ final class SetDifferencesObservationTests: XCTestCase {
         XCTAssertEqual(diffs, expectedDiffs)
     }
     
-    func testRequestUpdateElement() throws {
+    func testUpdateElement() throws {
         let dbQueue = DatabaseQueue()
         try dbQueue.write { db in
             try db.create(table: "player") { t in
@@ -131,29 +131,29 @@ final class SetDifferencesObservationTests: XCTestCase {
         var diffs: [SetDifferences<PlayerClass>] = []
         let expectedDiffs: [SetDifferences<PlayerClass>] = [
             SetDifferences(
-                inserted: [PlayerClass(id: 1, name: "Arthur", reuseCount: 0)],
+                inserted: [PlayerClass(id: 1, name: "Arthur", updateCount: 0)],
                 updated: [],
                 deleted: []),
             SetDifferences(
                 inserted: [],
-                updated: [PlayerClass(id: 1, name: "Barbara", reuseCount: 1)],
+                updated: [PlayerClass(id: 1, name: "Barbara", updateCount: 1)],
                 deleted: []),
             SetDifferences(
                 inserted: [],
                 updated: [],
-                deleted: [PlayerClass(id: 1, name: "Barbara", reuseCount: 1)]),
+                deleted: [PlayerClass(id: 1, name: "Barbara", updateCount: 1)]),
             SetDifferences(
-                inserted: [PlayerClass(id: 1, name: "Craig", reuseCount: 0),
-                           PlayerClass(id: 2, name: "Danielle", reuseCount: 0)],
+                inserted: [PlayerClass(id: 1, name: "Craig", updateCount: 0),
+                           PlayerClass(id: 2, name: "Danielle", updateCount: 0)],
                 updated: [],
                 deleted: []),
             SetDifferences(
-                inserted: [PlayerClass(id: 3, name: "Gerhard", reuseCount: 0)],
-                updated: [PlayerClass(id: 2, name: "Fiona", reuseCount: 1)],
-                deleted: [PlayerClass(id: 1, name: "Craig", reuseCount: 0)]),
+                inserted: [PlayerClass(id: 3, name: "Gerhard", updateCount: 0)],
+                updated: [PlayerClass(id: 2, name: "Fiona", updateCount: 1)],
+                deleted: [PlayerClass(id: 1, name: "Craig", updateCount: 0)]),
             SetDifferences(
                 inserted: [],
-                updated: [PlayerClass(id: 2, name: "Harriett", reuseCount: 2)],
+                updated: [PlayerClass(id: 2, name: "Harriett", updateCount: 2)],
                 deleted: []),
             ]
         let expectation = self.expectation(description: "diffs")
@@ -161,9 +161,16 @@ final class SetDifferencesObservationTests: XCTestCase {
         expectation.expectedFulfillmentCount = expectedDiffs.count
         
         let request = PlayerClass.all().orderByPrimaryKey()
-        let observation = ValueObservation.setDifferences(in: request, updateElement: { (player, row) in
-            return player.updated(from: row)
-        })
+        let observation = ValueObservation
+            .trackingAll(request)
+            .setDifferences(updateElement: { (oldPlayer, newPlayer) in
+                // Don't update and return oldPlayer because our test does not
+                // check each invidual diff as they are notified, but the list
+                // of all notified diffs: we must make sure that no instance
+                // is reused.
+                newPlayer.updateCount = oldPlayer.updateCount + 1
+                return newPlayer
+            })
         let observer = try observation.start(in: dbQueue) { diff in
             diffs.append(diff)
             expectation.fulfill()
@@ -194,7 +201,7 @@ final class SetDifferencesObservationTests: XCTestCase {
     }
     
     static var allTests = [
-        ("testRequestSetDifferences", testRequestSetDifferences),
-        ("testRequestUpdateElement", testRequestUpdateElement),
+        ("testSetDifferences", testSetDifferences),
+        ("testUpdateElement", testUpdateElement),
         ]
 }

@@ -4,7 +4,8 @@ import XCTest
 public func allTests() -> [XCTestCaseEntry] {
     return [
         testCase(RowValueTests.allTests),
-        testCase(SetDifferencesObservationTests.allTests),
+        testCase(SetDifferencesObservationIdentifiableTests.allTests),
+        testCase(SetDifferencesObservationRecordTests.allTests),
         testCase(SetDifferencesSequenceTests.allTests),
         testCase(_SetDifferencesReducerTests.allTests),
     ]
