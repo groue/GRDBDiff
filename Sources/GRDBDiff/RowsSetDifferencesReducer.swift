@@ -39,7 +39,7 @@ private func setDifferencesObservation<Request>(
 
 public struct RowsSetDifferencesReducer<Element>: ValueReducer {
     private let _fetch: (Database) throws -> [Row]
-    private var _reducer: RowsSetDifferenciator<Element, Row, RowValue>
+    private var _reducer: RowsSetDifferenciator<Element>
     
     fileprivate init(
         fetch: @escaping (Database) throws -> [Row],

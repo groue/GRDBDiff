@@ -3,35 +3,18 @@
 /// sequence, in the new, or in both.
 ///
 /// Both sequences do not have to share the same element type. Yet elements must
-/// share a common comparable *key*.
+/// share a common comparable *identity*.
 ///
-/// Both sequences must be sorted by this key.
+/// Both sequences must be sorted by identity.
 ///
-/// Keys must be unique in both sequences.
-///
-/// The example below compare two sequences sorted by integer representation:
-///
-///     for item in SetDifferencesSequence(
-///         old: [1,2,3],
-///         new: ["2", "3", "4"],
-///         oldKey: { $0 },
-///         newKey: { Int($0)! })
-///     {
-///         switch item {
-///         case .deleted(let old):
-///             print("- old: \(old)")
-///         case .updated(let old, let new):
-///             print("- updated: \(old), \(new)")
-///         case .inserted(let new):
-///             print("- new: \(new)")
-///         }
-///     }
-///     // Prints:
-///     // - deleted: 1
-///     // - updated: 2, 2
-///     // - updated: 3, 3
-///     // - inserted: 4
-struct SetDifferencesSequence<Old: Sequence, New: Sequence, Key: Comparable>: IteratorProtocol, Sequence {
+/// Identities must be unique in both sequences.
+struct SetDifferencesSequence<Old: Sequence, New: Sequence>: IteratorProtocol, Sequence
+    where
+    Old.Element: Identifiable,
+    New.Element: Identifiable,
+    Old.Element.Identity == New.Element.Identity,
+    Old.Element.Identity: Comparable
+{
     enum Element {
         /// An element only found in the new sequence:
         case inserted(New.Element)
@@ -45,39 +28,28 @@ struct SetDifferencesSequence<Old: Sequence, New: Sequence, Key: Comparable>: It
     var newIter: New.Iterator
     var oldElem: Old.Element?
     var newElem: New.Element?
-    let oldKey: (Old.Element) -> Key
-    let newKey: (New.Element) -> Key
 
     /// Creates a SetDifferencesSequence.
     ///
     /// - parameters:
     ///     - old: The old sequence.
     ///     - new: The new sequence.
-    ///     - oldKey: A function that returns the key of an old element.
-    ///     - newKey: A function that returns the key of a new element.
-    init(
-        old: Old,
-        new: New,
-        oldKey: @escaping (Old.Element) -> Key,
-        newKey: @escaping (New.Element) -> Key)
-    {
+    init(old: Old, new: New) {
         self.oldIter = old.makeIterator()
         self.newIter = new.makeIterator()
         self.oldElem = oldIter.next()
         self.newElem = newIter.next()
-        self.oldKey = oldKey
-        self.newKey = newKey
     }
     
     mutating func next() -> Element? {
         switch (oldElem, newElem) {
         case (let old?, let new?):
-            let oldKey = self.oldKey(old)
-            let newKey = self.newKey(new)
-            if oldKey > newKey {
+            let oldId = old.identity
+            let newId = new.identity
+            if oldId > newId {
                 self.newElem = newIter.next()
                 return .inserted(new)
-            } else if oldKey == newKey {
+            } else if oldId == newId {
                 self.oldElem = oldIter.next()
                 self.newElem = newIter.next()
                 return .updated(old, new)

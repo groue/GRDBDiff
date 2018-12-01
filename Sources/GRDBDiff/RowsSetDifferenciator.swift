@@ -1,55 +1,60 @@
-struct RowsSetDifferenciator<Element, Raw: Equatable, Key: Comparable> {
-    private struct Item {
-        let key: Key
-        let raw: Raw
+import GRDB
+
+struct RowsSetDifferenciator<Element> {
+    private struct Item: Identifiable {
+        let identity: RowValue
+        let row: Row
         let element: Element
     }
     
-    private let key: (Raw) -> Key
-    private let makeElement: (Raw) -> Element
-    private let updateElement: (Element, Raw) -> Element
+    private struct NewItem: Identifiable {
+        let identity: RowValue
+        let row: Row
+    }
+
+    private let key: (Row) -> RowValue
+    private let makeElement: (Row) -> Element
+    private let updateElement: (Element, Row) -> Element
     private var oldItems: [Item] = []
     
     init(
-        key: @escaping (Raw) -> Key,
-        initialElements: [(Raw, Element)],
-        makeElement: @escaping (Raw) -> Element,
-        updateElement: @escaping (Element, Raw) -> Element)
+        key: @escaping (Row) -> RowValue,
+        initialElements: [(Row, Element)],
+        makeElement: @escaping (Row) -> Element,
+        updateElement: @escaping (Element, Row) -> Element)
     {
         self.key = key
         self.makeElement = makeElement
         self.updateElement = updateElement
         self.oldItems = initialElements.map { pair in
-            Item(key: key(pair.0), raw: pair.0, element: pair.1)
+            Item(identity: key(pair.0), row: pair.0, element: pair.1)
         }
     }
     
-    mutating func diff(_ raws: [Raw]) -> SetDifferences<Element> {
+    mutating func diff(_ rows: [Row]) -> SetDifferences<Element> {
         var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
         var newItems: [Item] = []
         defer { self.oldItems = newItems }
         
         let diffElements = SetDifferencesSequence(
             old: oldItems,
-            new: raws.map { (key: key($0), raw: $0) },
-            oldKey: { $0.key },
-            newKey: { $0.key })
+            new: rows.map { NewItem(identity: key($0), row: $0) })
         
         for diffElement in diffElements {
             switch diffElement {
             case .inserted(let new):
-                let element = makeElement(new.raw)
+                let element = makeElement(new.row)
                 diff.inserted.append(element)
-                newItems.append(Item(key: new.key, raw: new.raw, element: element))
+                newItems.append(Item(identity: new.identity, row: new.row, element: element))
                 
             case .updated(let old, let new):
-                if new.raw == old.raw {
+                if new.row == old.row {
                     // unchanged
                     newItems.append(old)
                 } else {
-                    let updatedElement = updateElement(old.element, new.raw)
+                    let updatedElement = updateElement(old.element, new.row)
                     diff.updated.append(updatedElement)
-                    newItems.append(Item(key: old.key, raw: new.raw, element: updatedElement))
+                    newItems.append(Item(identity: old.identity, row: new.row, element: updatedElement))
                 }
                 
             case .deleted(let old):

@@ -18,13 +18,7 @@ struct IdentifiableCollectionSetDifferenciator<Element: Identifiable>
         var newElements: [Element] = []
         defer { self.oldElements = newElements }
         
-        let diffElements = SetDifferencesSequence(
-            old: oldElements,
-            new: elements,
-            oldKey: { $0.identity },
-            newKey: { $0.identity })
-        
-        for diffElement in diffElements {
+        for diffElement in SetDifferencesSequence(old: oldElements, new: elements) {
             switch diffElement {
             case .inserted(let new):
                 diff.inserted.append(new)
