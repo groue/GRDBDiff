@@ -5,42 +5,40 @@ import GRDBDiff
 
 class PlacesViewController: UIViewController {
     @IBOutlet private var mapView: MKMapView!
+    @IBOutlet private var topToolbar: UIToolbar!
+    private var isObservingDatabase = true {
+        didSet { setupDatabaseObservation() }
+    }
+    private var placeCountObserver: TransactionObserver?
     private var annotationsObserver: TransactionObserver?
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupToolbar()
+        setupTopToolbar()
+        setupNavigationToolbar()
+        setupDatabaseObservation()
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setToolbarHidden(false, animated: animated)
-        
-        // Start observing the database
-        setupMapView()
     }
     
-    override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-        
-        // Stop observing the database
-        annotationsObserver = nil
+    func setupDatabaseObservation() {
+        if isObservingDatabase {
+            placeCountObserver = startPlaceCountObservation()
+            annotationsObserver = startAnnotationsObservation()
+        } else {
+            placeCountObserver = nil
+            annotationsObserver = nil
+        }
+        setupTopToolbar()
     }
 }
 
 // MARK: - Actions
 
 extension PlacesViewController {
-    
-    private func setupToolbar() {
-        toolbarItems = [
-            UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlaces)),
-            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh)),
-            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
-        ]
-    }
     
     @IBAction func deletePlaces() {
         try! dbPool.write { db in
@@ -52,7 +50,7 @@ extension PlacesViewController {
         try! dbPool.write { db in
             if try Place.fetchCount(db) == 0 {
                 // Insert places
-                for _ in 0..<10 {
+                for _ in 0..<5 {
                     var place = Place.random()
                     try place.insert(db)
                 }
@@ -82,13 +80,71 @@ extension PlacesViewController {
             }
         }
     }
+    
+    @IBAction func startObservingDatabase() {
+        isObservingDatabase = true
+    }
+    
+    @IBAction func stopObservingDatabase() {
+        isObservingDatabase = false
+    }
 }
 
-// MARK: - Map View
+// MARK: - Navigation Toolbar
+
+extension PlacesViewController {
+    private func setupNavigationToolbar() {
+        toolbarItems = [
+            UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlaces)),
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh)),
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
+        ]
+    }
+}
+
+// MARK: - Top Toolbar
+
+extension PlacesViewController: UIToolbarDelegate {
+    func setupTopToolbar() {
+        if isObservingDatabase {
+            topToolbar.items = [
+                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+                UIBarButtonItem(title: "Stop Observing Database", style: .plain, target: self, action: #selector(stopObservingDatabase)),
+                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            ]
+        } else {
+            topToolbar.items = [
+                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+                UIBarButtonItem(title: "Start Observing Database", style: .plain, target: self, action: #selector(startObservingDatabase)),
+                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            ]
+        }
+    }
+    
+    func position(for bar: UIBarPositioning) -> UIBarPosition {
+        return UIBarPosition.topAttached
+    }
+}
+
+// MARK: - Database Observation
 
 extension PlacesViewController: MKMapViewDelegate {
+    func startPlaceCountObservation() -> TransactionObserver {
+        // Track changes in the number of places
+        return try! ValueObservation
+            .trackingCount(Place.all())
+            .start(in: dbPool) { [unowned self] count in
+                switch count {
+                case 0: self.navigationItem.title = "No Place"
+                case 1: self.navigationItem.title = "1 Place"
+                default: self.navigationItem.title = "\(count) Places"
+                }
+        }
+    }
     
-    private func setupMapView() {
+    private func startAnnotationsObservation() -> TransactionObserver {
         // We want to track the sets of inserted, deleted, and updated places,
         // so that we can update the mapView accordingly.
         //
@@ -135,7 +191,7 @@ extension PlacesViewController: MKMapViewDelegate {
         })
         
         // Start the database observation.
-        annotationsObserver = try! diffObservation.start(in: dbPool) { [weak self] diff in
+        return try! diffObservation.start(in: dbPool) { [weak self] diff in
             self?.updateMapView(with: diff)
         }
     }
@@ -145,7 +201,7 @@ extension PlacesViewController: MKMapViewDelegate {
         mapView.removeAnnotations(diff.deleted)
         for annotation in diff.updated {
             // Modify the annotation now, on the main thread.
-            // See setupMapView() for a longer explanation.
+            // See startAnnotationsObservation() for a longer explanation.
             annotation.coordinate = annotation.nextCoordinate!
         }
         
@@ -190,7 +246,7 @@ extension PlacesViewController: MKMapViewDelegate {
 
 /// A map annotation.
 ///
-/// It adopts all the proocols we need in PlacesViewController.setupMapView().
+/// It adopts all the proocols we need in PlacesViewController.startAnnotationsObservation().
 ///
 /// - MKAnnotation so that it can feed the map view.
 /// - FetchableRecord makes it possible to fetch annotations from the database.
@@ -207,7 +263,8 @@ private final class PlaceAnnotation:
     /// The annotation coordinate, KVO-compliant.
     @objc dynamic var coordinate: CLLocationCoordinate2D
     
-    /// Used during database observation. See PlacesViewController.setupMapView().
+    /// Used during database observation.
+    /// See PlacesViewController.startAnnotationsObservation().
     var nextCoordinate: CLLocationCoordinate2D?
     
     /// Part of the Identifiable protocol

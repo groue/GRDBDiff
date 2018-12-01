@@ -40,13 +40,23 @@
                                     <outlet property="delegate" destination="CQX-Ij-ZEX" id="wiR-KX-vS4"/>
                                 </connections>
                             </mapView>
+                            <toolbar opaque="NO" clearsContextBeforeDrawing="NO" contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="O6a-EP-ptP">
+                                <rect key="frame" x="0.0" y="64" width="375" height="44"/>
+                                <items/>
+                                <connections>
+                                    <outlet property="delegate" destination="CQX-Ij-ZEX" id="scI-GA-VMC"/>
+                                </connections>
+                            </toolbar>
                         </subviews>
                         <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                         <constraints>
                             <constraint firstItem="ZFZ-fk-Qn9" firstAttribute="top" secondItem="bKF-o4-uas" secondAttribute="top" id="BtB-Ku-meC"/>
+                            <constraint firstAttribute="trailing" secondItem="O6a-EP-ptP" secondAttribute="trailing" id="F59-Ws-Hh6"/>
                             <constraint firstItem="ZFZ-fk-Qn9" firstAttribute="bottom" secondItem="bKF-o4-uas" secondAttribute="bottom" id="ZgI-Uj-x5R"/>
+                            <constraint firstItem="O6a-EP-ptP" firstAttribute="leading" secondItem="bKF-o4-uas" secondAttribute="leading" id="eqQ-HM-9ag"/>
                             <constraint firstItem="ZFZ-fk-Qn9" firstAttribute="trailing" secondItem="bKF-o4-uas" secondAttribute="trailing" id="fxq-w8-MlS"/>
                             <constraint firstItem="ZFZ-fk-Qn9" firstAttribute="leading" secondItem="bKF-o4-uas" secondAttribute="leading" id="q9J-ec-Gn7"/>
+                            <constraint firstItem="O6a-EP-ptP" firstAttribute="top" secondItem="1av-hf-zKO" secondAttribute="top" id="xAI-aY-UXk"/>
                         </constraints>
                         <viewLayoutGuide key="safeArea" id="1av-hf-zKO"/>
                     </view>
@@ -54,6 +64,7 @@
                     <navigationItem key="navigationItem" title="GRDBDiff" id="WBD-kT-rtg"/>
                     <connections>
                         <outlet property="mapView" destination="ZFZ-fk-Qn9" id="TPO-5W-6UA"/>
+                        <outlet property="topToolbar" destination="O6a-EP-ptP" id="rRK-GC-CUf"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="M3s-cx-d9V" userLabel="First Responder" sceneMemberID="firstResponder"/>
