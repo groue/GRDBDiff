@@ -43,9 +43,10 @@ extension Place: MutablePersistableRecord {
 
 // Place randomization
 extension Place {
-    static func randomCoordinate() -> CLLocationCoordinate2D {
-        let paris = CLLocationCoordinate2D(latitude: 48.8534100, longitude: 2.3488000)
-        return CLLocationCoordinate2D.random(withinDistance: 8000, from: paris)
+    static func random() -> Place {
+        let paris = CLLocationCoordinate2D(latitude: 48.85341, longitude: 2.3488)
+        let coordinate = CLLocationCoordinate2D.random(withinDistance: 8000, from: paris)
+        return Place(id: nil, coordinate: coordinate)
     }
 }
 

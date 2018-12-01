@@ -36,7 +36,7 @@ struct AppDatabase {
         migrator.registerMigration("fixtures") { db in
             // Populate the places table with random data
             for _ in 0..<10 {
-                var place = Place(id: nil, coordinate: Place.randomCoordinate())
+                var place = Place.random()
                 try place.insert(db)
             }
         }

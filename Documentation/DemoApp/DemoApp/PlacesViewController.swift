@@ -106,10 +106,12 @@ extension PlacesViewController: MKMapViewDelegate {
     
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
         if let view = mapView.dequeueReusableAnnotationView(withIdentifier: "annotation") {
+            view.annotation = annotation
+            view.displayPriority = .required
             return view
         }
         let view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "annotation")
-        view.displayPriority = .required // opt out of clustering in order to show all annotations
+        view.displayPriority = .required
         return view
     }
     
@@ -148,14 +150,14 @@ extension PlacesViewController {
         try! dbPool.write { db in
             if try Place.fetchCount(db) == 0 {
                 // Insert places
-                for _ in 0..<8 {
-                    var place = Place(id: nil, coordinate: Place.randomCoordinate())
+                for _ in 0..<10 {
+                    var place = Place.random()
                     try place.insert(db)
                 }
             } else {
                 // Insert a place
                 if Bool.random() {
-                    var place = Place(id: nil, coordinate: Place.randomCoordinate())
+                    var place = Place.random()
                     try place.insert(db)
                 }
                 // Delete a random place
@@ -163,10 +165,8 @@ extension PlacesViewController {
                     try Place.order(sql: "RANDOM()").limit(1).deleteAll(db)
                 }
                 // Update some places
-                for place in try Place.fetchAll(db) where Bool.random() {
-                    var place = place
-                    place.latitude += 0.001 * (Double(arc4random()) / Double(UInt32.max) - 0.5)
-                    place.longitude += 0.001 * (Double(arc4random()) / Double(UInt32.max) - 0.5)
+                for var place in try Place.fetchAll(db) where Bool.random() {
+                    place.coordinate = CLLocationCoordinate2D.random(withinDistance: 300, from: place.coordinate)
                     try place.update(db)
                 }
             }
