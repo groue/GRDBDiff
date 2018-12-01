@@ -4,7 +4,7 @@ extension ValueObservation where Reducer == Void {
     static func setDifferences<Request>(
         in request: Request,
         updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder = { Request.RowDecoder(row: $1) })
-        -> ValueObservation<RowsSetDifferencesReducer<Request.RowDecoder>>
+        -> ValueObservation<RecordSetDifferencesReducer<Request.RowDecoder>>
         where
         Request: FetchRequest,
         Request.RowDecoder: FetchableRecord & TableRecord
@@ -22,31 +22,29 @@ extension ValueObservation where Reducer == Void {
 private func setDifferencesObservation<Request>(
     in request: Request,
     updateElement: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
-    -> ValueObservation<RowsSetDifferencesReducer<Request.RowDecoder>>
+    -> ValueObservation<RecordSetDifferencesReducer<Request.RowDecoder>>
     where
     Request: FetchRequest,
     Request.RowDecoder: FetchableRecord & TableRecord
 {
     return ValueObservation.tracking(request, reducer: { db in
-        try RowsSetDifferencesReducer(
+        try RecordSetDifferencesReducer(
             fetch: { try Row.fetchAll($0, request) },
             key: request.primaryKey(db),
             initialElements: [],
-            makeElement: Request.RowDecoder.init(row:),
             updateElement: updateElement)
     })
 }
 
-public struct RowsSetDifferencesReducer<Element>: ValueReducer {
+public struct RecordSetDifferencesReducer<Record>: ValueReducer where Record: FetchableRecord {
     private let _fetch: (Database) throws -> [Row]
-    private var _reducer: RowsSetDifferenciator<Element>
+    private var _reducer: RecordSetDifferenciator<Record>
     
     fileprivate init(
         fetch: @escaping (Database) throws -> [Row],
         key: @escaping (Row) -> RowValue,
-        initialElements: [(Row, Element)],
-        makeElement: @escaping (Row) -> Element,
-        updateElement: @escaping (Element, Row) -> Element)
+        initialElements: [(Row, Record)],
+        updateElement: @escaping (Record, Row) -> Record)
     {
         self._fetch = fetch
         
@@ -54,10 +52,9 @@ public struct RowsSetDifferencesReducer<Element>: ValueReducer {
         // - Element: Element
         // - Raw: Row
         // - Key: RowValue
-        self._reducer = RowsSetDifferenciator(
+        self._reducer = RecordSetDifferenciator(
             key: key,
             initialElements: initialElements,
-            makeElement: makeElement,
             updateElement: updateElement)
     }
     
@@ -67,7 +64,7 @@ public struct RowsSetDifferencesReducer<Element>: ValueReducer {
     }
     
     /// :nodoc:
-    public mutating func value(_ rows: [Row]) -> SetDifferences<Element>? {
+    public mutating func value(_ rows: [Row]) -> SetDifferences<Record>? {
         let diff = _reducer.diff(rows)
         if diff.isEmpty {
             return nil

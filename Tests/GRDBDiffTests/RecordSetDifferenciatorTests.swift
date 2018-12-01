@@ -2,16 +2,23 @@ import XCTest
 import GRDB
 @testable import GRDBDiff
 
-class RowsSetDifferenciatorTests: XCTestCase {
+class RecordSetDifferenciatorTests: XCTestCase {
     func testReducer() {
-        var reducer = RowsSetDifferenciator<String>(
+        struct Element: FetchableRecord {
+            var name: String
+            
+            init(row: Row) {
+                self.name = row["name"]
+            }
+        }
+        
+        var reducer = RecordSetDifferenciator<Element>(
             key: { (row: Row) in RowValue(dbValues: [row["id"]]) },
             initialElements: [],
-            makeElement: { (row: Row) in row["name"] as String },
-            updateElement: { (element: String, row: Row) in row["name"] })
+            updateElement: { (element: Element, row: Row) in Element(row: row) })
         
         do {
-            let diff: SetDifferences<String> = reducer.diff([])
+            let diff: SetDifferences<Element> = reducer.diff([])
             XCTAssertTrue(diff.isEmpty)
         }
         
@@ -20,7 +27,7 @@ class RowsSetDifferenciatorTests: XCTestCase {
                 ["id": 1, "name": "Arthur"]
                 ])
             XCTAssertEqual(diff.inserted.count, 1)
-            XCTAssertEqual(diff.inserted[0], "Arthur")
+            XCTAssertEqual(diff.inserted[0].name, "Arthur")
             XCTAssertTrue(diff.updated.isEmpty)
             XCTAssertTrue(diff.deleted.isEmpty)
         }
@@ -31,7 +38,7 @@ class RowsSetDifferenciatorTests: XCTestCase {
                 ])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
-            XCTAssertEqual(diff.updated[0], "Barbara")
+            XCTAssertEqual(diff.updated[0].name, "Barbara")
             XCTAssertTrue(diff.deleted.isEmpty)
         }
         
@@ -40,10 +47,10 @@ class RowsSetDifferenciatorTests: XCTestCase {
                 ["id": 2, "name": "Craig"]
                 ])
             XCTAssertEqual(diff.inserted.count, 1)
-            XCTAssertEqual(diff.inserted[0], "Craig")
+            XCTAssertEqual(diff.inserted[0].name, "Craig")
             XCTAssertTrue(diff.updated.isEmpty)
             XCTAssertEqual(diff.deleted.count, 1)
-            XCTAssertEqual(diff.deleted[0], "Barbara")
+            XCTAssertEqual(diff.deleted[0].name, "Barbara")
         }
         
         do {
@@ -54,9 +61,9 @@ class RowsSetDifferenciatorTests: XCTestCase {
                 ["id": 4, "name": "Gerhard"],
                 ])
             XCTAssertEqual(diff.inserted.count, 3)
-            XCTAssertEqual(Set(diff.inserted), ["David", "Fiona", "Gerhard"])
+            XCTAssertEqual(Set(diff.inserted.map { $0.name }), ["David", "Fiona", "Gerhard"])
             XCTAssertEqual(diff.updated.count, 1)
-            XCTAssertEqual(diff.updated[0], "Eugenia")
+            XCTAssertEqual(diff.updated[0].name, "Eugenia")
             XCTAssertTrue(diff.deleted.isEmpty)
         }
         
@@ -68,11 +75,11 @@ class RowsSetDifferenciatorTests: XCTestCase {
                 ["id": 6, "name": "Karl"],
                 ])
             XCTAssertEqual(diff.inserted.count, 2)
-            XCTAssertEqual(Set(diff.inserted), ["Jules", "Karl"])
+            XCTAssertEqual(Set(diff.inserted.map { $0.name }), ["Jules", "Karl"])
             XCTAssertEqual(diff.updated.count, 2)
-            XCTAssertEqual(Set(diff.updated), ["Henri", "Irene"])
+            XCTAssertEqual(Set(diff.updated.map { $0.name }), ["Henri", "Irene"])
             XCTAssertEqual(diff.deleted.count, 2)
-            XCTAssertEqual(Set(diff.deleted), ["Eugenia", "Gerhard"])
+            XCTAssertEqual(Set(diff.deleted.map { $0.name }), ["Eugenia", "Gerhard"])
         }
         
         do {
@@ -87,27 +94,29 @@ class RowsSetDifferenciatorTests: XCTestCase {
     }
     
     func testUpdateElement() {
-        class Element {
+        final class Element: FetchableRecord {
             var name: String
-            var reuseCount = 0
+            var updateCount = 0
             
-            init(name: String, reuseCount: Int) {
-                self.name = name
-                self.reuseCount = reuseCount
+            init(row: Row) {
+                self.name = row["name"]
             }
         }
         
-        var reducer = RowsSetDifferenciator<Element>(
+        var reducer = RecordSetDifferenciator<Element>(
             key: { (row: Row) in RowValue(dbValues: [row["id"]]) },
             initialElements: [],
-            makeElement: { (row: Row) in Element(name: row["name"], reuseCount: 0) },
-            updateElement: { (element: Element, row: Row) in Element(name: row["name"], reuseCount: element.reuseCount + 1) })
+            updateElement: { (element: Element, row: Row) in
+                let new = Element(row: row)
+                new.updateCount = element.updateCount + 1
+                return new
+        })
         
         do {
             let diff = reducer.diff([["id": 1, "name": "Arthur"]])
             XCTAssertEqual(diff.inserted.count, 1)
             XCTAssertEqual(diff.inserted[0].name, "Arthur")
-            XCTAssertEqual(diff.inserted[0].reuseCount, 0)
+            XCTAssertEqual(diff.inserted[0].updateCount, 0)
             XCTAssertTrue(diff.updated.isEmpty)
             XCTAssertTrue(diff.deleted.isEmpty)
         }
@@ -117,7 +126,7 @@ class RowsSetDifferenciatorTests: XCTestCase {
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
             XCTAssertEqual(diff.updated[0].name, "Barbara")
-            XCTAssertEqual(diff.updated[0].reuseCount, 1)
+            XCTAssertEqual(diff.updated[0].updateCount, 1)
             XCTAssertTrue(diff.deleted.isEmpty)
         }
         
@@ -126,7 +135,7 @@ class RowsSetDifferenciatorTests: XCTestCase {
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
             XCTAssertEqual(diff.updated[0].name, "Craig")
-            XCTAssertEqual(diff.updated[0].reuseCount, 2)
+            XCTAssertEqual(diff.updated[0].updateCount, 2)
             XCTAssertTrue(diff.deleted.isEmpty)
         }
         
@@ -136,7 +145,7 @@ class RowsSetDifferenciatorTests: XCTestCase {
             XCTAssertTrue(diff.updated.isEmpty)
             XCTAssertEqual(diff.deleted.count, 1)
             XCTAssertEqual(diff.deleted[0].name, "Craig")
-            XCTAssertEqual(diff.deleted[0].reuseCount, 2)
+            XCTAssertEqual(diff.deleted[0].updateCount, 2)
         }
     }
     

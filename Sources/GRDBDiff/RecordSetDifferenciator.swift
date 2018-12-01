@@ -1,10 +1,10 @@
 import GRDB
 
-struct RowsSetDifferenciator<Element> {
+struct RecordSetDifferenciator<Record> where Record: FetchableRecord {
     private struct Item: Identifiable {
         let identity: RowValue
         let row: Row
-        let element: Element
+        let element: Record
     }
     
     private struct NewItem: Identifiable {
@@ -13,26 +13,23 @@ struct RowsSetDifferenciator<Element> {
     }
 
     private let key: (Row) -> RowValue
-    private let makeElement: (Row) -> Element
-    private let updateElement: (Element, Row) -> Element
+    private let updateElement: (Record, Row) -> Record
     private var oldItems: [Item] = []
     
     init(
         key: @escaping (Row) -> RowValue,
-        initialElements: [(Row, Element)],
-        makeElement: @escaping (Row) -> Element,
-        updateElement: @escaping (Element, Row) -> Element)
+        initialElements: [(Row, Record)],
+        updateElement: @escaping (Record, Row) -> Record)
     {
         self.key = key
-        self.makeElement = makeElement
         self.updateElement = updateElement
         self.oldItems = initialElements.map { pair in
             Item(identity: key(pair.0), row: pair.0, element: pair.1)
         }
     }
     
-    mutating func diff(_ rows: [Row]) -> SetDifferences<Element> {
-        var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
+    mutating func diff(_ rows: [Row]) -> SetDifferences<Record> {
+        var diff = SetDifferences<Record>(inserted: [], updated: [], deleted: [])
         var newItems: [Item] = []
         defer { self.oldItems = newItems }
         
@@ -43,7 +40,7 @@ struct RowsSetDifferenciator<Element> {
         for diffElement in diffElements {
             switch diffElement {
             case .inserted(let new):
-                let element = makeElement(new.row)
+                let element = Record(row: new.row)
                 diff.inserted.append(element)
                 newItems.append(Item(identity: new.identity, row: new.row, element: element))
                 

@@ -34,7 +34,7 @@ private final class PlayerClass: Equatable, FetchableRecord, PersistableRecord {
     }
 }
 
-final class RowsSetDifferencesObservationTests: XCTestCase {
+final class RecordSetDifferencesReducerTests: XCTestCase {
     func testSetDifferences() throws {
         let dbQueue = DatabaseQueue()
         try dbQueue.write { db in

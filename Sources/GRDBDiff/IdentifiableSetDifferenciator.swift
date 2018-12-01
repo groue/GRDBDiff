@@ -1,4 +1,4 @@
-struct IdentifiableCollectionSetDifferenciator<Element: Identifiable>
+struct IdentifiableSetDifferenciator<Element: Identifiable>
     where Element: Equatable,
     Element.Identity: Comparable
 {

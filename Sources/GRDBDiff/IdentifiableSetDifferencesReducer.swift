@@ -9,10 +9,10 @@ extension ValueObservation where
     public func setDifferences(
         initialElements: [Reducer.Value.Element] = [],
         updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element = { $1 })
-        -> ValueObservation<IdentifiableCollectionSetDifferencesReducer<Reducer>>
+        -> ValueObservation<IdentifiableSetDifferencesReducer<Reducer>>
     {
         return mapReducer { db, reducer in
-            IdentifiableCollectionSetDifferencesReducer(
+            IdentifiableSetDifferencesReducer(
                 reducer: reducer,
                 initialElements: initialElements,
                 updateElement: updateElement)
@@ -20,21 +20,21 @@ extension ValueObservation where
     }
 }
 
-public struct IdentifiableCollectionSetDifferencesReducer<Reducer>: ValueReducer where
+public struct IdentifiableSetDifferencesReducer<Reducer>: ValueReducer where
     Reducer: ValueReducer,
     Reducer.Value: Collection,
     Reducer.Value.Element: Equatable & Identifiable,
     Reducer.Value.Element.Identity: Comparable
 {
     var reducer: Reducer
-    var diffReducer: IdentifiableCollectionSetDifferenciator<Reducer.Value.Element>
+    var diffReducer: IdentifiableSetDifferenciator<Reducer.Value.Element>
     
     init(reducer: Reducer,
          initialElements: [Reducer.Value.Element],
          updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element)
     {
         self.reducer = reducer
-        self.diffReducer = IdentifiableCollectionSetDifferenciator<Reducer.Value.Element>(
+        self.diffReducer = IdentifiableSetDifferenciator<Reducer.Value.Element>(
             initialElements: initialElements,
             updateElement: updateElement)
     }
