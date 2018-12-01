@@ -88,7 +88,7 @@ final class SetDifferencesObservationTests: XCTestCase {
         expectation.expectedFulfillmentCount = expectedDiffs.count
         
         let request = Player.all().orderByPrimaryKey()
-        let observation = ValueObservation.trackingSetDifferences(in: request)
+        let observation = ValueObservation.setDifferences(in: request)
         let observer = try observation.start(in: dbQueue) { diff in
             diffs.append(diff)
             expectation.fulfill()
@@ -161,7 +161,7 @@ final class SetDifferencesObservationTests: XCTestCase {
         expectation.expectedFulfillmentCount = expectedDiffs.count
         
         let request = PlayerClass.all().orderByPrimaryKey()
-        let observation = ValueObservation.trackingSetDifferences(in: request, updateElement: { (player, row) in
+        let observation = ValueObservation.setDifferences(in: request, updateElement: { (player, row) in
             return player.updated(from: row)
         })
         let observer = try observation.start(in: dbQueue) { diff in

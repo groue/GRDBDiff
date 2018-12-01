@@ -7,12 +7,9 @@ struct Place: Codable {
     var id: Int64?
     var latitude: CLLocationDegrees
     var longitude: CLLocationDegrees
-    
     var coordinate: CLLocationCoordinate2D {
         get {
-            return CLLocationCoordinate2D(
-                latitude: latitude,
-                longitude: longitude)
+            return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
         }
         set {
             latitude = newValue.latitude
@@ -27,22 +24,20 @@ struct Place: Codable {
     }
 }
 
-// Adopt RowConvertible so that we can fetch places from the database.
-// Implementation is automatically derived from Codable.
+/// Adopt RowConvertible so that we can fetch places from the database.
+/// Implementation is fully derived from Codable adoption.
 extension Place: FetchableRecord { }
 
-// Adopt MutablePersistable so that we can create/update/delete places in the database.
-// Implementation is partially derived from Codable.
+/// Adopt MutablePersistable so that we can create/update/delete places
+/// in the database. Implementation is partially derived from Codable adoption.
 extension Place: MutablePersistableRecord {
-    static let databaseTableName = "place"
-    
     mutating func didInsert(with rowID: Int64, for column: String?) {
         id = rowID
     }
 }
 
-// Place randomization
 extension Place {
+    /// Returns a random place
     static func random() -> Place {
         let paris = CLLocationCoordinate2D(latitude: 48.85341, longitude: 2.3488)
         let coordinate = CLLocationCoordinate2D.random(withinDistance: 8000, from: paris)
@@ -51,6 +46,7 @@ extension Place {
 }
 
 extension CLLocationCoordinate2D {
+    /// Returns a random coordinate
     static func random(withinDistance distance: CLLocationDistance, from center: CLLocationCoordinate2D) -> CLLocationCoordinate2D {
         // Generate a random point within a circle (uniformly)
         // https://stackoverflow.com/a/50746409/525656

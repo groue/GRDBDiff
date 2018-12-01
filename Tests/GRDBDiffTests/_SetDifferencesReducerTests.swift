@@ -9,6 +9,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         }
         var reducer = _SetDifferencesReducer<String, Raw, Int>(
             key: { (raw: Raw) in raw.id },
+            initialElements: [],
             makeElement: { (raw: Raw) in raw.name },
             updateElement: { (element: String, raw: Raw) in raw.name })
         
@@ -104,6 +105,7 @@ class _SetDifferencesReducerTests: XCTestCase {
         
         var reducer = _SetDifferencesReducer<Element, Raw, Int>(
             key: { (raw: Raw) in raw.id },
+            initialElements: [],
             makeElement: { (raw: Raw) in Element(name: raw.name) },
             updateElement: { (element: Element, raw: Raw) in
                 element.name = raw.name
