@@ -191,8 +191,8 @@ extension PlacesViewController: MKMapViewDelegate {
         })
         
         // Start the database observation.
-        return try! diffObservation.start(in: dbPool) { [weak self] diff in
-            self?.updateMapView(with: diff)
+        return try! diffObservation.start(in: dbPool) { [unowned self] diff in
+            self.updateMapView(with: diff)
         }
     }
     
