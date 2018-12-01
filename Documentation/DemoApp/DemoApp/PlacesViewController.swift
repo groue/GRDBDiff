@@ -6,6 +6,7 @@ import GRDBDiff
 class PlacesViewController: UIViewController {
     @IBOutlet private var mapView: MKMapView!
     @IBOutlet private var topToolbar: UIToolbar!
+    private var databaseObservationSwitch: UISwitch!
     private var isObservingDatabase = true {
         didSet { setupDatabaseObservation() }
     }
@@ -14,8 +15,8 @@ class PlacesViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupTopToolbar()
-        setupNavigationToolbar()
+        setupDatabaseObservationSwitch()
+        setupToolbarItems()
         setupDatabaseObservation()
     }
     
@@ -32,7 +33,6 @@ class PlacesViewController: UIViewController {
             placeCountObserver = nil
             annotationsObserver = nil
         }
-        setupTopToolbar()
     }
 }
 
@@ -81,19 +81,33 @@ extension PlacesViewController {
         }
     }
     
-    @IBAction func startObservingDatabase() {
-        isObservingDatabase = true
-    }
-    
-    @IBAction func stopObservingDatabase() {
-        isObservingDatabase = false
+    @IBAction func toggleDatabaseObservation() {
+        isObservingDatabase.toggle()
     }
 }
 
-// MARK: - Navigation Toolbar
+// MARK: - View
 
-extension PlacesViewController {
-    private func setupNavigationToolbar() {
+extension PlacesViewController: UIToolbarDelegate {
+    func setupDatabaseObservationSwitch() {
+        databaseObservationSwitch = UISwitch(frame: .zero)
+        databaseObservationSwitch.sizeToFit()
+        databaseObservationSwitch.isOn = isObservingDatabase
+        databaseObservationSwitch.addTarget(self, action: #selector(toggleDatabaseObservation), for: .valueChanged)
+        
+        let label = UILabel(frame: .zero)
+        label.text = "Observe Database"
+        label.font = UIFont.preferredFont(forTextStyle: .body)
+        label.sizeToFit()
+        
+        topToolbar.items = [
+            UIBarButtonItem(customView: label),
+            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
+            UIBarButtonItem(customView: databaseObservationSwitch),
+        ]
+    }
+    
+    private func setupToolbarItems() {
         toolbarItems = [
             UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlaces)),
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
@@ -101,26 +115,6 @@ extension PlacesViewController {
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
             UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
         ]
-    }
-}
-
-// MARK: - Top Toolbar
-
-extension PlacesViewController: UIToolbarDelegate {
-    func setupTopToolbar() {
-        if isObservingDatabase {
-            topToolbar.items = [
-                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-                UIBarButtonItem(title: "Stop Observing Database", style: .plain, target: self, action: #selector(stopObservingDatabase)),
-                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            ]
-        } else {
-            topToolbar.items = [
-                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-                UIBarButtonItem(title: "Start Observing Database", style: .plain, target: self, action: #selector(startObservingDatabase)),
-                UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            ]
-        }
     }
     
     func position(for bar: UIBarPositioning) -> UIBarPosition {
@@ -227,14 +221,12 @@ extension PlacesViewController: MKMapViewDelegate {
         
         // Zoom
         let topToolbarHeight = topToolbar.frame.height
-        mapView.setVisibleMapRect(
-            zoomRect,
-            edgePadding: UIEdgeInsets(
-                top: 40 + topToolbarHeight,
-                left: 40,
-                bottom: 40,
-                right: 40),
-            animated: animated)
+        let edgePadding = UIEdgeInsets(
+            top: 40 + topToolbarHeight,
+            left: 40,
+            bottom: 40,
+            right: 40)
+        mapView.setVisibleMapRect(zoomRect, edgePadding: edgePadding, animated: animated)
     }
     
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
