@@ -27,14 +27,15 @@ public struct IdentifiableSetDifferencesReducer<Reducer>: ValueReducer where
     Reducer.Value.Element.Identity: Comparable
 {
     var reducer: Reducer
-    var diffReducer: IdentifiableSetDifferenciator<Reducer.Value.Element>
+    var differenciator: IdentifiableSetDifferenciator<Reducer.Value.Element>
     
-    init(reducer: Reducer,
-         initialElements: [Reducer.Value.Element],
-         updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element)
+    init(
+        reducer: Reducer,
+        initialElements: [Reducer.Value.Element],
+        updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element)
     {
         self.reducer = reducer
-        self.diffReducer = IdentifiableSetDifferenciator<Reducer.Value.Element>(
+        self.differenciator = IdentifiableSetDifferenciator<Reducer.Value.Element>(
             initialElements: initialElements,
             updateElement: updateElement)
     }
@@ -47,7 +48,7 @@ public struct IdentifiableSetDifferencesReducer<Reducer>: ValueReducer where
         guard let elements = reducer.value(fetched) else {
             return nil
         }
-        let diff = diffReducer.diff(elements)
+        let diff = differenciator.diff(elements)
         if diff.isEmpty {
             return nil
         } else {

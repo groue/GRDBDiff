@@ -78,7 +78,9 @@ final class RecordSetDifferencesReducerTests: XCTestCase {
         expectation.expectedFulfillmentCount = expectedDiffs.count
         
         let request = Player.all().orderByPrimaryKey()
-        let observation = ValueObservation.setDifferences(in: request)
+        let observation = ValueObservation
+            .trackingAll(request)
+            .setDifferencesFromRows()
         let observer = try observation.start(in: dbQueue) { diff in
             diffs.append(diff)
             expectation.fulfill()
@@ -151,15 +153,17 @@ final class RecordSetDifferencesReducerTests: XCTestCase {
         expectation.expectedFulfillmentCount = expectedDiffs.count
         
         let request = PlayerClass.all().orderByPrimaryKey()
-        let observation = ValueObservation.setDifferences(in: request, updateElement: { (oldPlayer, row) in
-            // Don't update and return oldPlayer because our test does not
-            // check each invidual diff as they are notified, but the list
-            // of all notified diffs: we must make sure that no instance
-            // is reused.
-            let newPlayer = PlayerClass(row: row)
-            newPlayer.updateCount = oldPlayer.updateCount + 1
-            return newPlayer
-        })
+        let observation = ValueObservation
+            .trackingAll(request)
+            .setDifferencesFromRows(updateElementFromRow: { (oldPlayer, row) in
+                // Don't update and return oldPlayer because our test does not
+                // check each invidual diff as they are notified, but the list
+                // of all notified diffs: we must make sure that no instance
+                // is reused.
+                let newPlayer = PlayerClass(row: row)
+                newPlayer.updateCount = oldPlayer.updateCount + 1
+                return newPlayer
+            })
         let observer = try observation.start(in: dbQueue) { diff in
             diffs.append(diff)
             expectation.fulfill()
