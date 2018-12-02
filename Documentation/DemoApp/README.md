@@ -14,7 +14,7 @@ The rows of the players table view animate as you change the players ordering, d
 
 The annotations of the map view move, appear, and disappear as you refresh the map view content.
 
-In both screens, the bomb icon spawns 50 dispatch items that concurrently perform random database transformations.
+In both screens, the :bomb: icon spawns 50 dispatch items that concurrently perform random database transformations.
 
 | [PlayersViewController](DemoApp/PlayersViewController.swift) | [PlacesViewController](DemoApp/PlacesViewController.swift) |
 | :-----: | :-----: |
