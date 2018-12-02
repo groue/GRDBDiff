@@ -1,11 +1,11 @@
 import GRDB
 
-public protocol _RequestValueReducer {
+public protocol _FetchableRecordsReducerProtocol {
     associatedtype _Request: FetchRequest
     var request: _Request { get }
 }
 
-extension FetchableRecordsReducer: _RequestValueReducer { }
+extension FetchableRecordsReducer: _FetchableRecordsReducerProtocol { }
 
 extension ValueObservation where
     Reducer: ValueReducer,
@@ -15,7 +15,7 @@ extension ValueObservation where
 {
     public func setDifferences(
         startingFrom initialElements: [Reducer.Value.Element] = [],
-        onUpdate onUpdate: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element = { $1 })
+        onUpdate: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element = { $1 })
         -> ValueObservation<SetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
@@ -28,19 +28,18 @@ extension ValueObservation where
 }
 
 extension ValueObservation where
-    Reducer: ValueReducer & _RequestValueReducer,
-    Reducer.Value: Sequence,
+    Reducer: ValueReducer & _FetchableRecordsReducerProtocol,
     Reducer._Request.RowDecoder: FetchableRecord & TableRecord
 {
     public func setDifferencesFromRequest(
         onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
-        -> ValueObservation<RequestSetDiffReducer<Reducer>>
+        -> ValueObservation<RequestSetDiffReducer<Reducer._Request>>
     {
         return mapReducer { db, reducer in
             let databaseTableName = Reducer._Request.RowDecoder.databaseTableName
             let primaryKeyColumns = try db.primaryKey(databaseTableName).columns
             return RequestSetDiffReducer(
-                reducer: reducer,
+                request: reducer.request,
                 identityColumns: primaryKeyColumns,
                 onUpdate: onUpdate)
         }
@@ -48,20 +47,20 @@ extension ValueObservation where
 }
 
 extension ValueObservation where
-    Reducer: ValueReducer & _RequestValueReducer,
+    Reducer: ValueReducer & _FetchableRecordsReducerProtocol,
     Reducer.Value: Sequence,
     Reducer._Request.RowDecoder: FetchableRecord & MutablePersistableRecord
 {
     public func setDifferencesFromRequest(
         startingFrom initialRecords: [Reducer._Request.RowDecoder], // TODO: test
         onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
-        -> ValueObservation<RequestSetDiffReducer<Reducer>>
+        -> ValueObservation<RequestSetDiffReducer<Reducer._Request>>
     {
         return mapReducer { db, reducer in
             let databaseTableName = Reducer._Request.RowDecoder.databaseTableName
             let primaryKeyColumns = try db.primaryKey(databaseTableName).columns
             return RequestSetDiffReducer(
-                reducer: reducer,
+                request: reducer.request,
                 identityColumns: primaryKeyColumns,
                 startingFrom: initialRecords,
                 onUpdate: onUpdate)
@@ -107,17 +106,16 @@ public struct SetDiffReducer<Reducer>: ValueReducer where
 }
 
 /// :nodoc:
-public struct RequestSetDiffReducer<Reducer>: ValueReducer where
-    Reducer: ValueReducer & _RequestValueReducer,
-    Reducer.Value: Sequence,
-    Reducer._Request.RowDecoder: FetchableRecord & TableRecord
+public struct RequestSetDiffReducer<Request>: ValueReducer where
+    Request: FetchRequest,
+    Request.RowDecoder: FetchableRecord & TableRecord
 {
     private class Item: Identifiable, Equatable {
         var identity: RowValue
         var row: Row
-        lazy var element: Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: row) }()
+        lazy var element: Request.RowDecoder = { Request.RowDecoder(row: row) }()
         
-        init(identity: RowValue, row: Row, element: Reducer._Request.RowDecoder? = nil) {
+        init(identity: RowValue, row: Row, element: Request.RowDecoder? = nil) {
             self.identity = identity
             self.row = row
             if let element = element {
@@ -137,17 +135,17 @@ public struct RequestSetDiffReducer<Reducer>: ValueReducer where
         }
     }
     
-    private var reducer: Reducer
+    private var request: Request
     private var differ: SetDiffer<Item>
     private let identityColumns: [String]
     
     private init(
-        reducer: Reducer,
+        request: Request,
         identityColumns: [String],
         initialItems: [Item],
-        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
+        onUpdate: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
     {
-        self.reducer = reducer
+        self.request = request
         self.identityColumns = identityColumns
         self.differ = SetDiffer(onUpdate: { oldItem, newItem in
             newItem.element = onUpdate(oldItem.element, newItem.row)
@@ -157,22 +155,22 @@ public struct RequestSetDiffReducer<Reducer>: ValueReducer where
     }
     
     fileprivate init(
-        reducer: Reducer,
+        request: Request,
         identityColumns: [String],
-        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
+        onUpdate: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
     {
         self.init(
-            reducer: reducer,
+            request: request,
             identityColumns: identityColumns,
             initialItems: [],
             onUpdate: onUpdate)
     }
     
     public func fetch(_ db: Database) throws -> [Row] {
-        return try Row.fetchAll(db, reducer.request)
+        return try Row.fetchAll(db, request)
     }
     
-    public mutating func value(_ rows: [Row]) -> SetDiff<Reducer._Request.RowDecoder>? {
+    public mutating func value(_ rows: [Row]) -> SetDiff<Request.RowDecoder>? {
         let items: [Item] = rows.map { row in
             let identity = RowValue(dbValues: identityColumns.map { row[$0] })
             return Item(identity: identity, row: row)
@@ -189,12 +187,12 @@ public struct RequestSetDiffReducer<Reducer>: ValueReducer where
     }
 }
 
-extension RequestSetDiffReducer where Reducer._Request.RowDecoder: MutablePersistableRecord {
+extension RequestSetDiffReducer where Request.RowDecoder: MutablePersistableRecord {
     fileprivate init(
-        reducer: Reducer,
+        request: Request,
         identityColumns: [String],
-        startingFrom initialElements: [Reducer._Request.RowDecoder],
-        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
+        startingFrom initialElements: [Request.RowDecoder],
+        onUpdate: @escaping (Request.RowDecoder, Row) -> Request.RowDecoder)
     {
         let initialItems: [Item] = initialElements.map { element in
             let row = Row(element.databaseDictionary)
@@ -202,7 +200,7 @@ extension RequestSetDiffReducer where Reducer._Request.RowDecoder: MutablePersis
             return Item(identity: identity, row: row, element: element)
         }
         self.init(
-            reducer: reducer,
+            request: request,
             identityColumns: identityColumns,
             initialItems: initialItems,
             onUpdate: onUpdate)
