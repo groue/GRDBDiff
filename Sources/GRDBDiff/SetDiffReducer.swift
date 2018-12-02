@@ -33,7 +33,7 @@ extension ValueObservation where
     Reducer._Request.RowDecoder: FetchableRecord & TableRecord
 {
     public func setDifferencesFromRequest(
-        updateElement: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
+        updateRecord: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
         -> ValueObservation<RequestSetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
@@ -42,7 +42,7 @@ extension ValueObservation where
             return RequestSetDiffReducer(
                 reducer: reducer,
                 identityColumns: primaryKeyColumns,
-                updateElement: updateElement)
+                updateElement: updateRecord)
         }
     }
 }
@@ -53,8 +53,8 @@ extension ValueObservation where
     Reducer._Request.RowDecoder: FetchableRecord & MutablePersistableRecord
 {
     public func setDifferencesFromRequest(
-        initialElements: [Reducer._Request.RowDecoder] = [], // TODO: test
-        updateElement: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
+        initialRecords: [Reducer._Request.RowDecoder] = [], // TODO: test
+        updateRecord: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
         -> ValueObservation<RequestSetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
@@ -63,8 +63,8 @@ extension ValueObservation where
             return RequestSetDiffReducer(
                 reducer: reducer,
                 identityColumns: primaryKeyColumns,
-                initialElements: initialElements,
-                updateElement: updateElement)
+                initialElements: initialRecords,
+                updateElement: updateRecord)
         }
     }
 }
