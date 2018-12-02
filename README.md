@@ -42,7 +42,7 @@ You track Set Differences with one of those three methods:
 - [ValueObservation.setDifferencesFromRequest(startingFrom:)]
 - [ValueObservation.setDifferences()]
 
-Each one of them builds a [ValueObservation] which notifies `SetDiff` values whenever the database changes:
+Each one of them returns a [ValueObservation] which notifies `SetDiff` values whenever the database changes:
 
 ```swift
 struct SetDiff<Element> {
@@ -51,6 +51,8 @@ struct SetDiff<Element> {
     var deleted: [Element]
 }
 ```
+
+Each one of them is made available by the protocols adopted by the type of tracked elements.
 
 
 ### ValueObservation.setDifferencesFromRequest()
