@@ -1,6 +1,5 @@
 import UIKit
 import GRDB
-import GRDBDiff
 import Differ
 
 class PlayersViewController: UITableViewController {
