@@ -157,7 +157,7 @@ let observer = diffObservation.start(in: dbQueue) { diff: SetDiff<Element> in
     
     > Those two protocol allow to decide which elements they were inserted, updated, or deleted.
 
-2. Define a [ValueObservation] which notifies sequences of elements. Those sequences must be sorted by identity. They must not contain two elements with the same identity. You'll get wrong results otherwise.
+2. Define a [ValueObservation] which notifies elements. Elements must be sorted by identity. They must not contain two elements with the same identity. You'll get wrong results otherwise.
     
     > Ordering elements by primary key provides an efficient O(N) computation of diffs.
 
