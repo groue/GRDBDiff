@@ -29,9 +29,9 @@ You can track Set Differences with one of those three methods:
 - ValueObservation.setDifferences(initialElements:updateElement:)
 
 
-#### ValueObservation.setDifferencesFromRequest(updateElement:)
+### ValueObservation.setDifferencesFromRequest(updateElement:)
 
-Usage:
+**Usage**
 
 ```swift
 // 1.
@@ -54,8 +54,27 @@ let observer = diffObservation.start(in: dbQueue) { diff: SetDiff<Place> in
 }
 ```
 
+1. Define a **[Record]** type that conforms to both [FetchableRecord] and [TableRecord] protocols.
+
+    > FetchableRecord makes it possible to fetch places from the database.
+    > TableRecord provides the database primary key for places, which allows to identity places, and decide if they were inserted, updated, or deleted.
+
+2. Define a database [request] of the elements you are interested in. Make sure the request is ordered by primary key. You'll get wrong results if the request is not properly ordered.
+
+    > Ordering elements by primary key provides an efficient O(N) computation of diffs.
+
+3. Define a [ValueObservation] from the request, with the `ValueObservation.trackingAll` method.
+
+4. Derive a Set Differences observation with the `setDifferencesFromRequest` method.
+
+5. Start the observation and enjoy your diffs!
 
 
 
 [GRDB]: https://github.com/groue/GRDB.swift
 [Set Differences]: #set-differences
+[Record]: https://github.com/groue/GRDB.swift/blob/master/README.md#records
+[FetchableRecord]: https://github.com/groue/GRDB.swift/blob/master/README.md#fetchablerecord-protocol
+[TableRecord]: https://github.com/groue/GRDB.swift/blob/master/README.md#tablerecord-protocol
+[request]: https://github.com/groue/GRDB.swift/blob/master/README.md#requests
+[ValueObservation]: https://github.com/groue/GRDB.swift/blob/master/README.md#valueobservation
