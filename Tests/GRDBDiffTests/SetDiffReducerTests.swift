@@ -163,7 +163,7 @@ final class SetDiffReducerTests: XCTestCase {
         let request = PlayerClass.all().orderByPrimaryKey()
         let observation = ValueObservation
             .trackingAll(request)
-            .setDifferences(updateElement: { (oldPlayer, newPlayer) in
+            .setDifferences(onUpdate: { (oldPlayer, newPlayer) in
                 // Don't update and return oldPlayer because our test does not
                 // check each invidual diff as they are notified, but the list
                 // of all notified diffs: we must make sure that no instance

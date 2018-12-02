@@ -10,7 +10,7 @@ class SetDifferTests: XCTestCase {
         }
         
         var differ = SetDiffer<Element>(
-            updateElement: { (oldElement, newElement) in newElement })
+            onUpdate: { (oldElement, newElement) in newElement })
         
         do {
             let diff: SetDiff<Element> = differ.diff([])
@@ -88,18 +88,17 @@ class SetDifferTests: XCTestCase {
         }
     }
     
-    func testUpdateElement() {
+    func testOnUpdate() {
         struct Element: Identifiable, Equatable {
             var identity: Int
             var name: String
             var updateCount = 0
         }
         
-        var differ = SetDiffer<Element>(
-            updateElement: { (oldElement, newElement) in
-                var newElement = newElement
-                newElement.updateCount = oldElement.updateCount + 1
-                return newElement
+        var differ = SetDiffer<Element>(onUpdate: { (oldElement, newElement) in
+            var newElement = newElement
+            newElement.updateCount = oldElement.updateCount + 1
+            return newElement
         })
         
         do {
@@ -141,6 +140,6 @@ class SetDifferTests: XCTestCase {
     
     static var allTests = [
         ("testDiff", testDiff),
-        ("testUpdateElement", testUpdateElement),
+        ("testOnUpdate", testOnUpdate),
         ]
 }

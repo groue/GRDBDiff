@@ -171,8 +171,8 @@ extension PlacesViewController: MKMapViewDelegate {
         // queue before we modify the annotation on the map (this will happen
         // in the updateMapView(with:) method below.
         let diffObservation = annotationsObservation.setDifferencesFromRequest(
-            initialRecords: initialAnnotations,
-            updateRecord: { reusedAnnotation, newRow in
+            startingFrom: initialAnnotations,
+            onUpdate: { reusedAnnotation, newRow in
                 // Not on the main queue here
                 reusedAnnotation.nextPlace = Place(row: newRow)
                 return reusedAnnotation

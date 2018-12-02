@@ -2,11 +2,11 @@ struct SetDiffer<Element: Identifiable>
     where Element: Equatable,
     Element.Identity: Comparable
 {
-    private let updateElement: (Element, Element) -> Element
+    private let onUpdate: (Element, Element) -> Element
     private var oldElements: [Element] = []
     
-    init(updateElement: @escaping (Element, Element) -> Element) {
-        self.updateElement = updateElement
+    init(onUpdate: @escaping (Element, Element) -> Element) {
+        self.onUpdate = onUpdate
     }
     
     mutating func diff<S: Sequence>(_ elements: S) -> SetDiff<Element> where S.Element == Element {
@@ -25,7 +25,7 @@ struct SetDiffer<Element: Identifiable>
                     // Unchanged. Keep old element, so that we reuse reference types.
                     newElements.append(old)
                 } else {
-                    let updatedElement = updateElement(old, new)
+                    let updatedElement = onUpdate(old, new)
                     diff.updated.append(updatedElement)
                     newElements.append(updatedElement)
                 }

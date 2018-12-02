@@ -39,7 +39,7 @@ On the other side, they can not animate the cells in a table view or a collectio
 You track Set Differences with one of those three methods:
 
 - [ValueObservation.setDifferencesFromRequest()]
-- [ValueObservation.setDifferencesFromRequest(initialRecords:)]
+- [ValueObservation.setDifferencesFromRequest(startingFrom:)]
 - [ValueObservation.setDifferences()]
 
 Each one of them builds a [ValueObservation] which notifies `SetDiff` values whenever the database changes:
@@ -94,17 +94,17 @@ let observer = diffObservation.start(in: dbQueue) { diff: SetDiff<Place> in
 5. Start the observation and enjoy your diffs!
 
 
-#### The Optional `updateRecord` Parameter
+#### The Optional `onUpdate` Parameter
 
 By default, the records notified in the `diff.updated` array are newly created values.
 
-When you need to customize handling of updated records, provide a `updateRecord` closure. Its first parameter is an old record. The second one is a new database row. It returns the record that should be notified in `diff.updated`. It does not run on the main queue.
+When you need to customize handling of updated records, provide a `onUpdate` closure. Its first parameter is an old record. The second one is a new database row. It returns the record that should be notified in `diff.updated`. It does not run on the main queue.
 
 For example, this observation prints changes:
 
 ```swift
 let diffObservation = placesObservation
-    .setDifferencesFromRequest(updateRecord: { (place: Place, row: Row) in
+    .setDifferencesFromRequest(onUpdate: { (place: Place, row: Row) in
         let newPlace = Place(row: row)
         print("changes: \(newPlace.databaseChanges(from: place))")
         return newPlace
@@ -115,20 +115,20 @@ And this other one reuses record instances:
 
 ```swift
 let diffObservation = placesObservation
-    .setDifferencesFromRequest(updateRecord: { (place: Place, row: Row) in
+    .setDifferencesFromRequest(onUpdate: { (place: Place, row: Row) in
         place.update(from: row)
         return place
     })
 ```
 
 
-### ValueObservation.setDifferencesFromRequest(initialRecords:)
+### ValueObservation.setDifferencesFromRequest(startingFrom:)
 
 This method gives the same results as [ValueObservation.setDifferencesFromRequest()]. The differences are:
 
 - The tracked record type must conform to a [PersistableRecord] protocol, on top of [FetchableRecord] and [TableRecord].
 
-- The `initialRecords` parameter is an array of records used to compute the first diff. Make sure this array are ordered by primary key. You'll get wrong results otherwise.
+- The `startingFrom` parameter is passed an array of records used to compute the first diff. Make sure this array are ordered by primary key. You'll get wrong results otherwise.
 
 
 ### ValueObservation.setDifferences()
@@ -166,24 +166,24 @@ let observer = diffObservation.start(in: dbQueue) { diff: SetDiff<Element> in
 4. Start the observation and enjoy your diffs!
 
 
-#### The Optional `updateElement` Parameter
+#### The Optional `onUpdate` Parameter
 
-When you need to customize handling of updated elements, provide a `updateElement` closure. Its first parameter is an old element. The second one is a new element. It returns the element that should be notified in `diff.updated`. It does not run on the main queue.
+When you need to customize handling of updated elements, provide a `onUpdate` closure. Its first parameter is an old element. The second one is a new element. It returns the element that should be notified in `diff.updated`. It does not run on the main queue.
 
 For example, this observation reuses element instances:
 
 ```swift
 let diffObservation = placesObservation
-    .setDifferences(updateElement: { (old: Element, new: Element) in
+    .setDifferences(onUpdate: { (old: Element, new: Element) in
         old.update(from: new)
         return old
     })
 ```
 
 
-#### The Optional `initialElements` Parameter
+#### The Optional `startingFrom` Parameter
 
-The `initialElements` parameter is an array of elements used to compute the first diff. Make sure this array are ordered by identity, and does not contain two elements with the same identity. You'll get wrong results otherwise.
+The `startingFrom` parameter is passed an array of elements used to compute the first diff. Make sure this array are ordered by identity, and does not contain two elements with the same identity. You'll get wrong results otherwise.
 
 
 ### The Identifiable Protocol
@@ -220,7 +220,7 @@ But you can leverage third-party libraries. See the [demo application] for an ex
 [request]: https://github.com/groue/GRDB.swift/blob/master/README.md#requests
 [ValueObservation]: https://github.com/groue/GRDB.swift/blob/master/README.md#valueobservation
 [ValueObservation.setDifferencesFromRequest()]: #valueobservationsetdifferencesfromrequest
-[ValueObservation.setDifferencesFromRequest(initialRecords:)]: #valueobservationsetdifferencesfromrequestinitialrecords
+[ValueObservation.setDifferencesFromRequest(startingFrom:)]: #valueobservationsetdifferencesfromrequeststartingfrom
 [ValueObservation.setDifferences()]: #valueobservationsetdifferences
 [Identifiable]: #the-identifiable-protocol
 [Differ]: https://github.com/tonyarnold/Differ

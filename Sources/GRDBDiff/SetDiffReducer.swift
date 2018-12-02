@@ -14,15 +14,15 @@ extension ValueObservation where
     Reducer.Value.Element.Identity: Comparable
 {
     public func setDifferences(
-        initialElements: [Reducer.Value.Element] = [],
-        updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element = { $1 })
+        startingFrom initialElements: [Reducer.Value.Element] = [],
+        onUpdate onUpdate: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element = { $1 })
         -> ValueObservation<SetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
             SetDiffReducer(
                 reducer: reducer,
-                initialElements: initialElements,
-                updateElement: updateElement)
+                startingFrom: initialElements,
+                onUpdate: onUpdate)
         }
     }
 }
@@ -33,7 +33,7 @@ extension ValueObservation where
     Reducer._Request.RowDecoder: FetchableRecord & TableRecord
 {
     public func setDifferencesFromRequest(
-        updateRecord: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
+        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
         -> ValueObservation<RequestSetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
@@ -42,7 +42,7 @@ extension ValueObservation where
             return RequestSetDiffReducer(
                 reducer: reducer,
                 identityColumns: primaryKeyColumns,
-                updateElement: updateRecord)
+                onUpdate: onUpdate)
         }
     }
 }
@@ -53,8 +53,8 @@ extension ValueObservation where
     Reducer._Request.RowDecoder: FetchableRecord & MutablePersistableRecord
 {
     public func setDifferencesFromRequest(
-        initialRecords: [Reducer._Request.RowDecoder], // TODO: test
-        updateRecord: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
+        startingFrom initialRecords: [Reducer._Request.RowDecoder], // TODO: test
+        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
         -> ValueObservation<RequestSetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
@@ -63,8 +63,8 @@ extension ValueObservation where
             return RequestSetDiffReducer(
                 reducer: reducer,
                 identityColumns: primaryKeyColumns,
-                initialElements: initialRecords,
-                updateElement: updateRecord)
+                startingFrom: initialRecords,
+                onUpdate: onUpdate)
         }
     }
 }
@@ -81,11 +81,11 @@ public struct SetDiffReducer<Reducer>: ValueReducer where
     
     init(
         reducer: Reducer,
-        initialElements: [Reducer.Value.Element],
-        updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element)
+        startingFrom initialElements: [Reducer.Value.Element],
+        onUpdate: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element)
     {
         self.reducer = reducer
-        self.differ = SetDiffer<Reducer.Value.Element>(updateElement: updateElement)
+        self.differ = SetDiffer<Reducer.Value.Element>(onUpdate: onUpdate)
         _ = differ.diff(initialElements)
     }
     
@@ -145,12 +145,12 @@ public struct RequestSetDiffReducer<Reducer>: ValueReducer where
         reducer: Reducer,
         identityColumns: [String],
         initialItems: [Item],
-        updateElement: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
+        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
     {
         self.reducer = reducer
         self.identityColumns = identityColumns
-        self.differ = SetDiffer(updateElement: { oldItem, newItem in
-            newItem.element = updateElement(oldItem.element, newItem.row)
+        self.differ = SetDiffer(onUpdate: { oldItem, newItem in
+            newItem.element = onUpdate(oldItem.element, newItem.row)
             return newItem
         })
         _ = differ.diff(initialItems)
@@ -159,13 +159,13 @@ public struct RequestSetDiffReducer<Reducer>: ValueReducer where
     fileprivate init(
         reducer: Reducer,
         identityColumns: [String],
-        updateElement: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
+        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
     {
         self.init(
             reducer: reducer,
             identityColumns: identityColumns,
             initialItems: [],
-            updateElement: updateElement)
+            onUpdate: onUpdate)
     }
     
     public func fetch(_ db: Database) throws -> [Row] {
@@ -193,8 +193,8 @@ extension RequestSetDiffReducer where Reducer._Request.RowDecoder: MutablePersis
     fileprivate init(
         reducer: Reducer,
         identityColumns: [String],
-        initialElements: [Reducer._Request.RowDecoder],
-        updateElement: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
+        startingFrom initialElements: [Reducer._Request.RowDecoder],
+        onUpdate: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder)
     {
         let initialItems: [Item] = initialElements.map { element in
             let row = Row(element.databaseDictionary)
@@ -205,7 +205,7 @@ extension RequestSetDiffReducer where Reducer._Request.RowDecoder: MutablePersis
             reducer: reducer,
             identityColumns: identityColumns,
             initialItems: initialItems,
-            updateElement: updateElement)
+            onUpdate: onUpdate)
     }
 }
 
