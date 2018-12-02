@@ -220,13 +220,17 @@ extension PlacesViewController: MKMapViewDelegate {
         let zoomRect = rects.dropFirst().reduce(firstRect) { $0.union($1) }
         
         // Zoom
-        let topToolbarHeight = topToolbar.frame.height
-        let edgePadding = UIEdgeInsets(
-            top: 40 + topToolbarHeight,
-            left: 40,
-            bottom: 40,
-            right: 40)
-        mapView.setVisibleMapRect(zoomRect, edgePadding: edgePadding, animated: animated)
+        if zoomRect.size.width == 0 && zoomRect.size.height == 0 {
+            mapView.setCenter(zoomRect.origin.coordinate, animated: animated)
+        } else {
+            let topToolbarHeight = topToolbar.frame.height
+            let edgePadding = UIEdgeInsets(
+                top: 80 + topToolbarHeight,
+                left: 40,
+                bottom: 40,
+                right: 40)
+            mapView.setVisibleMapRect(zoomRect, edgePadding: edgePadding, animated: animated)
+        }
     }
     
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
