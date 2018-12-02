@@ -1,8 +1,8 @@
 import XCTest
 @testable import GRDBDiff
 
-final class SetDifferencesSequenceTests: XCTestCase {
-    func testDiffSequence() {
+final class SetDiffSequenceTests: XCTestCase {
+    func testSetDiffSequence() {
         struct Item1: Identifiable, ExpressibleByIntegerLiteral {
             var identity: Int
             init(integerLiteral value: Int) {
@@ -23,7 +23,7 @@ final class SetDifferencesSequenceTests: XCTestCase {
             file: StaticString = #file, line: UInt = #line)
         {
             var elements: [String] = []
-            for element in SetDifferencesSequence(old: old, new: new) {
+            for element in SetDiffSequence(old: old, new: new) {
                 switch element {
                 case .deleted(let old):
                     elements.append("-\(old.identity)")
@@ -115,6 +115,6 @@ final class SetDifferencesSequenceTests: XCTestCase {
     }
     
     static var allTests = [
-        ("testDiffSequence", testDiffSequence),
+        ("testSetDiffSequence", testSetDiffSequence),
         ]
 }

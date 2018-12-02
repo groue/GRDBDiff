@@ -8,7 +8,7 @@ struct RowValue {
     let dbValues: [DatabaseValue]
 }
 
-extension RowValue : Comparable {
+extension RowValue: Comparable {
     static func < (lhs: RowValue, rhs: RowValue) -> Bool {
         return lhs.dbValues.lexicographicallyPrecedes(rhs.dbValues, by: <)
     }

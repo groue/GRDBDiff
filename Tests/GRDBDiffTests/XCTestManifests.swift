@@ -3,11 +3,11 @@ import XCTest
 #if !os(macOS)
 public func allTests() -> [XCTestCaseEntry] {
     return [
-        testCase(IdentifiableSetDifferencesReducerTests.allTests),
-        testCase(RecordSetDifferencesReducerTests.allTests),
-        testCase(RecordSetDifferTests.allTests),
+        testCase(RequestSetDiffReducerTests.allTests),
         testCase(RowValueTests.allTests),
-        testCase(SetDifferencesSequenceTests.allTests),
+        testCase(SetDiffReducerTests.allTests),
+        testCase(SetDiffSequenceTests.allTests),
+        testCase(SetDifferTests.allTests),
     ]
 }
 #endif

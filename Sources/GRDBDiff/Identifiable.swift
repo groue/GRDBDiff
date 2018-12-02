@@ -1,4 +1,4 @@
 public protocol Identifiable {
     associatedtype Identity: Equatable
-    var identity : Identity { get }
+    var identity: Identity { get }
 }

@@ -8,7 +8,7 @@
 /// Both sequences must be sorted by identity.
 ///
 /// Identities must be unique in both sequences.
-struct SetDifferencesSequence<Old: Sequence, New: Sequence>: IteratorProtocol, Sequence
+struct SetDiffSequence<Old: Sequence, New: Sequence>: IteratorProtocol, Sequence
     where
     Old.Element: Identifiable,
     New.Element: Identifiable,
@@ -24,10 +24,10 @@ struct SetDifferencesSequence<Old: Sequence, New: Sequence>: IteratorProtocol, S
         case deleted(Old.Element)
     }
     
-    var oldIter: Old.Iterator
-    var newIter: New.Iterator
-    var oldElem: Old.Element?
-    var newElem: New.Element?
+    private var oldIter: Old.Iterator
+    private var newIter: New.Iterator
+    private var oldElem: Old.Element?
+    private var newElem: New.Element?
 
     /// Creates a SetDifferencesSequence.
     ///
@@ -47,21 +47,21 @@ struct SetDifferencesSequence<Old: Sequence, New: Sequence>: IteratorProtocol, S
             let oldId = old.identity
             let newId = new.identity
             if oldId > newId {
-                self.newElem = newIter.next()
+                newElem = newIter.next()
                 return .inserted(new)
             } else if oldId == newId {
-                self.oldElem = oldIter.next()
-                self.newElem = newIter.next()
+                oldElem = oldIter.next()
+                newElem = newIter.next()
                 return .common(old, new)
             } else {
-                self.oldElem = oldIter.next()
+                oldElem = oldIter.next()
                 return .deleted(old)
             }
         case (nil, let new?):
-            self.newElem = newIter.next()
+            newElem = newIter.next()
             return .inserted(new)
         case (let old?, nil):
-            self.oldElem = oldIter.next()
+            oldElem = oldIter.next()
             return .deleted(old)
         case (nil, nil):
             return nil

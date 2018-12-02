@@ -15,8 +15,8 @@ class PlacesViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        setupDatabaseObservationSwitch()
         setupToolbarItems()
+        setupDatabaseObservationSwitch()
         setupDatabaseObservation()
     }
     
@@ -142,7 +142,7 @@ extension PlacesViewController: MKMapViewDelegate {
         // We want to track the sets of inserted, deleted, and updated places,
         // so that we can update the mapView accordingly.
         //
-        // We'll use the ValueObservation.setDifferencesFromRows(...) method
+        // We'll use the ValueObservation.setDifferencesFromRequest(...) method
         // provided by GRDBDiff.
         //
         // It can compute diffs from arrays of records ordered by primary key.
@@ -155,7 +155,7 @@ extension PlacesViewController: MKMapViewDelegate {
         // The map may already contain place annotations. The differences have
         // to take them in account.
         //
-        // ValueObservation.setDifferencesFromRows(...) accepts an
+        // ValueObservation.setDifferencesFromRequest(...) accepts an
         // initialElements parameter, which is an array ordered by primary key:
         let initialAnnotations = mapView.annotations
             .compactMap { $0 as? PlaceAnnotation }
@@ -176,9 +176,9 @@ extension PlacesViewController: MKMapViewDelegate {
         // So let's reuse annotations, and wait until we are back on the main
         // queue before we modify the annotation on the map (this will happen
         // in the updateMapView(with:) method below.
-        let diffObservation = annotationsObservation.setDifferencesFromRows(
+        let diffObservation = annotationsObservation.setDifferencesFromRequest(
             initialElements: initialAnnotations,
-            updateElementFromRow: { reusedAnnotation, newRow in
+            updateElement: { reusedAnnotation, newRow in
                 // Not on the main queue here
                 reusedAnnotation.nextPlace = Place(row: newRow)
                 return reusedAnnotation
@@ -190,11 +190,11 @@ extension PlacesViewController: MKMapViewDelegate {
         }
     }
     
-    private func updateMapView(with diff: SetDifferences<PlaceAnnotation>) {
+    private func updateMapView(with diff: SetDiff<PlaceAnnotation>) {
         mapView.addAnnotations(diff.inserted)
         mapView.removeAnnotations(diff.deleted)
         for annotation in diff.updated {
-            // Modify the annotation now, on the main thread.
+            // On the main thread: we can update the annotation.
             // See startAnnotationsObservation() for a longer explanation.
             annotation.place = annotation.nextPlace!
         }
@@ -254,9 +254,9 @@ extension PlacesViewController: MKMapViewDelegate {
 /// - TableRecord makes it possible to define the
 ///   `PlaceAnnotation.orderByPrimaryKey()` observed request.
 /// - TableRecord also makes it possible to use the
-///   `ValueObservation.setDifferencesFromRows(...)` method.
+///   `ValueObservation.setDifferencesFromRequest(...)` method.
 /// - PersistableRecord makes it possible to provide initial elements to the
-///   `ValueObservation.setDifferencesFromRows(...)` method.
+///   `ValueObservation.setDifferencesFromRequest(...)` method.
 private final class PlaceAnnotation:
     NSObject, MKAnnotation, FetchableRecord, TableRecord, PersistableRecord
 {

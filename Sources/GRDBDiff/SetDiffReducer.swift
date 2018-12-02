@@ -9,10 +9,10 @@ extension ValueObservation where
     public func setDifferences(
         initialElements: [Reducer.Value.Element] = [],
         updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element = { $1 })
-        -> ValueObservation<IdentifiableSetDifferencesReducer<Reducer>>
+        -> ValueObservation<SetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
-            IdentifiableSetDifferencesReducer(
+            SetDiffReducer(
                 reducer: reducer,
                 initialElements: initialElements,
                 updateElement: updateElement)
@@ -20,14 +20,14 @@ extension ValueObservation where
     }
 }
 
-public struct IdentifiableSetDifferencesReducer<Reducer>: ValueReducer where
+public struct SetDiffReducer<Reducer>: ValueReducer where
     Reducer: ValueReducer,
     Reducer.Value: Sequence,
     Reducer.Value.Element: Equatable & Identifiable,
     Reducer.Value.Element.Identity: Comparable
 {
     private var reducer: Reducer
-    private var differ: IdentifiableSetDiffer<Reducer.Value.Element>
+    private var differ: SetDiffer<Reducer.Value.Element>
     
     init(
         reducer: Reducer,
@@ -35,7 +35,7 @@ public struct IdentifiableSetDifferencesReducer<Reducer>: ValueReducer where
         updateElement: @escaping (Reducer.Value.Element, Reducer.Value.Element) -> Reducer.Value.Element)
     {
         self.reducer = reducer
-        self.differ = IdentifiableSetDiffer<Reducer.Value.Element>(updateElement: updateElement)
+        self.differ = SetDiffer<Reducer.Value.Element>(updateElement: updateElement)
         _ = differ.diff(initialElements)
     }
     
@@ -43,7 +43,7 @@ public struct IdentifiableSetDifferencesReducer<Reducer>: ValueReducer where
         return try reducer.fetch(db)
     }
     
-    public mutating func value(_ fetched: Reducer.Fetched) -> SetDifferences<Reducer.Value.Element>? {
+    public mutating func value(_ fetched: Reducer.Fetched) -> SetDiff<Reducer.Value.Element>? {
         guard let elements = reducer.value(fetched) else {
             return nil
         }

@@ -6,52 +6,54 @@ public protocol _RequestValueReducer {
 }
 
 extension FetchableRecordsReducer: _RequestValueReducer { }
-extension RowsReducer: _RequestValueReducer { } // TODO: test
 
 extension ValueObservation where
-    Reducer: _RequestValueReducer,
+    Reducer: ValueReducer & _RequestValueReducer,
+    Reducer.Value: Sequence,
     Reducer._Request.RowDecoder: FetchableRecord & TableRecord
 {
-    public func setDifferencesFromRows(
-        updateElementFromRow: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
-        -> ValueObservation<RecordSetDifferencesReducer<Reducer>>
+    public func setDifferencesFromRequest(
+        updateElement: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
+        -> ValueObservation<RequestSetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
             let databaseTableName = Reducer._Request.RowDecoder.databaseTableName
             let primaryKeyColumns = try db.primaryKey(databaseTableName).columns
-            return RecordSetDifferencesReducer(
+            return RequestSetDiffReducer(
                 reducer: reducer,
                 identityColumns: primaryKeyColumns,
-                updateElement: updateElementFromRow)
+                updateElement: updateElement)
         }
     }
 }
 
 extension ValueObservation where
-    Reducer: _RequestValueReducer,
+    Reducer: ValueReducer & _RequestValueReducer,
+    Reducer.Value: Sequence,
     Reducer._Request.RowDecoder: FetchableRecord & MutablePersistableRecord
 {
-    public func setDifferencesFromRows(
+    public func setDifferencesFromRequest(
         initialElements: [Reducer._Request.RowDecoder] = [], // TODO: test
-        updateElementFromRow: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
-        -> ValueObservation<RecordSetDifferencesReducer<Reducer>>
+        updateElement: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
+        -> ValueObservation<RequestSetDiffReducer<Reducer>>
     {
         return mapReducer { db, reducer in
             let databaseTableName = Reducer._Request.RowDecoder.databaseTableName
             let primaryKeyColumns = try db.primaryKey(databaseTableName).columns
-            return RecordSetDifferencesReducer(
+            return RequestSetDiffReducer(
                 reducer: reducer,
                 identityColumns: primaryKeyColumns,
                 initialElements: initialElements,
-                updateElement: updateElementFromRow)
+                updateElement: updateElement)
         }
     }
 }
 
 /// :nodoc:
-public struct RecordSetDifferencesReducer<Reducer>: ValueReducer where
-    Reducer: _RequestValueReducer,
-    Reducer._Request.RowDecoder: FetchableRecord
+public struct RequestSetDiffReducer<Reducer>: ValueReducer where
+    Reducer: ValueReducer & _RequestValueReducer,
+    Reducer.Value: Sequence,
+    Reducer._Request.RowDecoder: FetchableRecord & TableRecord
 {
     private class Item: Identifiable, Equatable {
         var identity: RowValue
@@ -67,13 +69,19 @@ public struct RecordSetDifferencesReducer<Reducer>: ValueReducer where
         }
         
         static func == (lhs: Item, rhs: Item) -> Bool {
-            // FIXME: initial items may not have the same column ordering :-(
-            return lhs.row == rhs.row
+            // Ignore ordering of columns when comparing rows, because
+            // initialItems have no way to reproduce the row they were
+            // built from.
+            //
+            // This row comparison is only valid because diffed records adopt
+            // TableRecord: we are not dealing with compound records build from
+            // hierarchical row scopes, here.
+            return lhs.row.hasSameColumnsAndValues(rhs.row)
         }
     }
     
     private var reducer: Reducer
-    private var differ: IdentifiableSetDiffer<Item>
+    private var differ: SetDiffer<Item>
     private let identityColumns: [String]
 
     private init(
@@ -84,7 +92,7 @@ public struct RecordSetDifferencesReducer<Reducer>: ValueReducer where
     {
         self.reducer = reducer
         self.identityColumns = identityColumns
-        self.differ = IdentifiableSetDiffer(updateElement: { oldItem, newItem in
+        self.differ = SetDiffer(updateElement: { oldItem, newItem in
             newItem.element = updateElement(oldItem.element, newItem.row)
             return newItem
         })
@@ -107,7 +115,7 @@ public struct RecordSetDifferencesReducer<Reducer>: ValueReducer where
         return try Row.fetchAll(db, reducer.request)
     }
     
-    public mutating func value(_ rows: [Row]) -> SetDifferences<Reducer._Request.RowDecoder>? {
+    public mutating func value(_ rows: [Row]) -> SetDiff<Reducer._Request.RowDecoder>? {
         let items: [Item] = rows.map { row in
             let identity = RowValue(dbValues: identityColumns.map { row[$0] })
             return Item(identity: identity, row: row)
@@ -116,7 +124,7 @@ public struct RecordSetDifferencesReducer<Reducer>: ValueReducer where
         if diff.isEmpty {
             return nil
         } else {
-            return SetDifferences(
+            return SetDiff(
                 inserted: diff.inserted.map { $0.element },
                 updated: diff.updated.map { $0.element },
                 deleted: diff.deleted.map { $0.element })
@@ -124,7 +132,7 @@ public struct RecordSetDifferencesReducer<Reducer>: ValueReducer where
     }
 }
 
-extension RecordSetDifferencesReducer where Reducer._Request.RowDecoder: MutablePersistableRecord {
+extension RequestSetDiffReducer where Reducer._Request.RowDecoder: MutablePersistableRecord {
     fileprivate init(
         reducer: Reducer,
         identityColumns: [String],
@@ -141,5 +149,25 @@ extension RecordSetDifferencesReducer where Reducer._Request.RowDecoder: Mutable
             identityColumns: identityColumns,
             initialItems: initialItems,
             updateElement: updateElement)
+    }
+}
+
+extension Row {
+    /// True if other row has the same columns and values.
+    /// Order of columns is irrelevant.
+    /// Row scopes are ignored.
+    func hasSameColumnsAndValues(_ other: Row) -> Bool {
+        if count != other.count {
+            return false
+        }
+        for (column, dbValue) in self {
+            if other.hasColumn(column) == false {
+                return false
+            }
+            if other[column] != dbValue {
+                return false
+            }
+        }
+        return true
     }
 }

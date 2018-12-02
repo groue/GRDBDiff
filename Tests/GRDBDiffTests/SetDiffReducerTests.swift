@@ -2,15 +2,23 @@ import XCTest
 import GRDB
 @testable import GRDBDiff
 
-private struct Player: Codable, Equatable, FetchableRecord, PersistableRecord {
+private struct Player: Codable, Equatable, FetchableRecord, PersistableRecord, Identifiable {
     var id: Int64
     var name: String
+    
+    var identity: Int64 {
+        return id
+    }
 }
 
-private final class PlayerClass: Equatable, FetchableRecord, PersistableRecord {
+private final class PlayerClass: Equatable, FetchableRecord, PersistableRecord, Identifiable {
     var player: Player
     var updateCount: Int
     
+    var identity: Int64 {
+        return player.identity
+    }
+
     init(id: Int64, name: String, updateCount: Int = 0) {
         self.player = Player(id: id, name: name)
         self.updateCount = updateCount
@@ -26,7 +34,7 @@ private final class PlayerClass: Equatable, FetchableRecord, PersistableRecord {
     func encode(to container: inout PersistenceContainer) {
         player.encode(to: &container)
     }
-
+    
     static func == (lhs: PlayerClass, rhs: PlayerClass) -> Bool {
         if lhs.player != rhs.player { return false }
         if lhs.updateCount != rhs.updateCount { return false }
@@ -34,7 +42,7 @@ private final class PlayerClass: Equatable, FetchableRecord, PersistableRecord {
     }
 }
 
-final class RecordSetDifferencesReducerTests: XCTestCase {
+final class SetDiffReducerTests: XCTestCase {
     func testSetDifferences() throws {
         let dbQueue = DatabaseQueue()
         try dbQueue.write { db in
@@ -45,30 +53,30 @@ final class RecordSetDifferencesReducerTests: XCTestCase {
             try Player(id: 1, name: "Arthur").insert(db)
         }
         
-        var diffs: [SetDifferences<Player>] = []
-        let expectedDiffs: [SetDifferences<Player>] = [
-            SetDifferences(
+        var diffs: [SetDiff<Player>] = []
+        let expectedDiffs: [SetDiff<Player>] = [
+            SetDiff(
                 inserted: [Player(id: 1, name: "Arthur")],
                 updated: [],
                 deleted: []),
-            SetDifferences(
+            SetDiff(
                 inserted: [],
                 updated: [Player(id: 1, name: "Barbara")],
                 deleted: []),
-            SetDifferences(
+            SetDiff(
                 inserted: [],
                 updated: [],
                 deleted: [Player(id: 1, name: "Barbara")]),
-            SetDifferences(
+            SetDiff(
                 inserted: [Player(id: 1, name: "Craig"),
                            Player(id: 2, name: "Danielle")],
                 updated: [],
                 deleted: []),
-            SetDifferences(
+            SetDiff(
                 inserted: [Player(id: 3, name: "Gerhard")],
                 updated: [Player(id: 2, name: "Fiona")],
                 deleted: [Player(id: 1, name: "Craig")]),
-            SetDifferences(
+            SetDiff(
                 inserted: [],
                 updated: [Player(id: 2, name: "Harriett")],
                 deleted: []),
@@ -80,7 +88,7 @@ final class RecordSetDifferencesReducerTests: XCTestCase {
         let request = Player.all().orderByPrimaryKey()
         let observation = ValueObservation
             .trackingAll(request)
-            .setDifferencesFromRows()
+            .setDifferences()
         let observer = try observation.start(in: dbQueue) { diff in
             diffs.append(diff)
             expectation.fulfill()
@@ -120,30 +128,30 @@ final class RecordSetDifferencesReducerTests: XCTestCase {
             try PlayerClass(id: 1, name: "Arthur").insert(db)
         }
         
-        var diffs: [SetDifferences<PlayerClass>] = []
-        let expectedDiffs: [SetDifferences<PlayerClass>] = [
-            SetDifferences(
+        var diffs: [SetDiff<PlayerClass>] = []
+        let expectedDiffs: [SetDiff<PlayerClass>] = [
+            SetDiff(
                 inserted: [PlayerClass(id: 1, name: "Arthur", updateCount: 0)],
                 updated: [],
                 deleted: []),
-            SetDifferences(
+            SetDiff(
                 inserted: [],
                 updated: [PlayerClass(id: 1, name: "Barbara", updateCount: 1)],
                 deleted: []),
-            SetDifferences(
+            SetDiff(
                 inserted: [],
                 updated: [],
                 deleted: [PlayerClass(id: 1, name: "Barbara", updateCount: 1)]),
-            SetDifferences(
+            SetDiff(
                 inserted: [PlayerClass(id: 1, name: "Craig", updateCount: 0),
                            PlayerClass(id: 2, name: "Danielle", updateCount: 0)],
                 updated: [],
                 deleted: []),
-            SetDifferences(
+            SetDiff(
                 inserted: [PlayerClass(id: 3, name: "Gerhard", updateCount: 0)],
                 updated: [PlayerClass(id: 2, name: "Fiona", updateCount: 1)],
                 deleted: [PlayerClass(id: 1, name: "Craig", updateCount: 0)]),
-            SetDifferences(
+            SetDiff(
                 inserted: [],
                 updated: [PlayerClass(id: 2, name: "Harriett", updateCount: 2)],
                 deleted: []),
@@ -155,12 +163,11 @@ final class RecordSetDifferencesReducerTests: XCTestCase {
         let request = PlayerClass.all().orderByPrimaryKey()
         let observation = ValueObservation
             .trackingAll(request)
-            .setDifferencesFromRows(updateElementFromRow: { (oldPlayer, row) in
+            .setDifferences(updateElement: { (oldPlayer, newPlayer) in
                 // Don't update and return oldPlayer because our test does not
                 // check each invidual diff as they are notified, but the list
                 // of all notified diffs: we must make sure that no instance
                 // is reused.
-                let newPlayer = PlayerClass(row: row)
                 newPlayer.updateCount = oldPlayer.updateCount + 1
                 return newPlayer
             })

@@ -1,4 +1,4 @@
-struct IdentifiableSetDiffer<Element: Identifiable>
+struct SetDiffer<Element: Identifiable>
     where Element: Equatable,
     Element.Identity: Comparable
 {
@@ -9,12 +9,12 @@ struct IdentifiableSetDiffer<Element: Identifiable>
         self.updateElement = updateElement
     }
     
-    mutating func diff<S: Sequence>(_ elements: S) -> SetDifferences<Element> where S.Element == Element {
-        var diff = SetDifferences<Element>(inserted: [], updated: [], deleted: [])
+    mutating func diff<S: Sequence>(_ elements: S) -> SetDiff<Element> where S.Element == Element {
+        var diff = SetDiff<Element>(inserted: [], updated: [], deleted: [])
         var newElements: [Element] = []
         defer { self.oldElements = newElements }
         
-        for diffElement in SetDifferencesSequence(old: oldElements, new: elements) {
+        for diffElement in SetDiffSequence(old: oldElements, new: elements) {
             switch diffElement {
             case .inserted(let new):
                 diff.inserted.append(new)

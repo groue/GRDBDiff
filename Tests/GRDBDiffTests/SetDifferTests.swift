@@ -2,18 +2,18 @@ import XCTest
 import GRDB
 @testable import GRDBDiff
 
-class IdentifiableSetDifferTests: XCTestCase {
+class SetDifferTests: XCTestCase {
     func testDiff() {
         struct Element: Identifiable, Equatable {
             var identity: Int
             var name: String
         }
         
-        var differ = IdentifiableSetDiffer<Element>(
+        var differ = SetDiffer<Element>(
             updateElement: { (oldElement, newElement) in newElement })
         
         do {
-            let diff: SetDifferences<Element> = differ.diff([])
+            let diff: SetDiff<Element> = differ.diff([])
             XCTAssertTrue(diff.isEmpty)
         }
         
@@ -95,7 +95,7 @@ class IdentifiableSetDifferTests: XCTestCase {
             var updateCount = 0
         }
         
-        var differ = IdentifiableSetDiffer<Element>(
+        var differ = SetDiffer<Element>(
             updateElement: { (oldElement, newElement) in
                 var newElement = newElement
                 newElement.updateCount = oldElement.updateCount + 1
