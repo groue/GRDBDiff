@@ -153,7 +153,7 @@ let observer = diffObservation.start(in: dbQueue) { diff: SetDiff<Element> in
 }
 ```
 
-1. Define a type that conforms to both [Identifiable] and [Equatable] protocols.
+1. Define a type that conforms to both [Identifiable] and the standard Equatable protocols.
     
     > Those two protocol allow to decide which elements they were inserted, updated, or deleted.
 
