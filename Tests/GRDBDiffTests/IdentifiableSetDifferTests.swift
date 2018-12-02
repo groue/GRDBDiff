@@ -2,29 +2,24 @@ import XCTest
 import GRDB
 @testable import GRDBDiff
 
-class RecordSetDifferenciatorTests: XCTestCase {
-    func testReducer() {
-        struct Element: FetchableRecord {
+class IdentifiableSetDifferTests: XCTestCase {
+    func testDiff() {
+        struct Element: Identifiable, Equatable {
+            var identity: Int
             var name: String
-            
-            init(row: Row) {
-                self.name = row["name"]
-            }
         }
         
-        var reducer = RecordSetDifferenciator<Element>(
-            key: { (row: Row) in RowValue(dbValues: [row["id"]]) },
-            initialElements: [],
-            updateElement: { (element: Element, row: Row) in Element(row: row) })
+        var differ = IdentifiableSetDiffer<Element>(
+            updateElement: { (oldElement, newElement) in newElement })
         
         do {
-            let diff: SetDifferences<Element> = reducer.diff([])
+            let diff: SetDifferences<Element> = differ.diff([])
             XCTAssertTrue(diff.isEmpty)
         }
         
         do {
-            let diff = reducer.diff([
-                ["id": 1, "name": "Arthur"]
+            let diff = differ.diff([
+                Element(identity: 1, name: "Arthur")
                 ])
             XCTAssertEqual(diff.inserted.count, 1)
             XCTAssertEqual(diff.inserted[0].name, "Arthur")
@@ -33,8 +28,8 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([
-                ["id": 1, "name": "Barbara"]
+            let diff = differ.diff([
+                Element(identity: 1, name: "Barbara")
                 ])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
@@ -43,8 +38,8 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([
-                ["id": 2, "name": "Craig"]
+            let diff = differ.diff([
+                Element(identity: 2, name: "Craig")
                 ])
             XCTAssertEqual(diff.inserted.count, 1)
             XCTAssertEqual(diff.inserted[0].name, "Craig")
@@ -54,11 +49,11 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([
-                ["id": 1, "name": "David"],
-                ["id": 2, "name": "Eugenia"],
-                ["id": 3, "name": "Fiona"],
-                ["id": 4, "name": "Gerhard"],
+            let diff = differ.diff([
+                Element(identity: 1, name: "David"),
+                Element(identity: 2, name: "Eugenia"),
+                Element(identity: 3, name: "Fiona"),
+                Element(identity: 4, name: "Gerhard"),
                 ])
             XCTAssertEqual(diff.inserted.count, 3)
             XCTAssertEqual(Set(diff.inserted.map { $0.name }), ["David", "Fiona", "Gerhard"])
@@ -68,11 +63,11 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([
-                ["id": 1, "name": "Henri"],
-                ["id": 3, "name": "Irene"],
-                ["id": 5, "name": "Jules"],
-                ["id": 6, "name": "Karl"],
+            let diff = differ.diff([
+                Element(identity: 1, name: "Henri"),
+                Element(identity: 3, name: "Irene"),
+                Element(identity: 5, name: "Jules"),
+                Element(identity: 6, name: "Karl"),
                 ])
             XCTAssertEqual(diff.inserted.count, 2)
             XCTAssertEqual(Set(diff.inserted.map { $0.name }), ["Jules", "Karl"])
@@ -83,37 +78,32 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([
-                ["id": 1, "name": "Henri"],
-                ["id": 3, "name": "Irene"],
-                ["id": 5, "name": "Jules"],
-                ["id": 6, "name": "Karl"],
+            let diff = differ.diff([
+                Element(identity: 1, name: "Henri"),
+                Element(identity: 3, name: "Irene"),
+                Element(identity: 5, name: "Jules"),
+                Element(identity: 6, name: "Karl"),
                 ])
             XCTAssertTrue(diff.isEmpty)
         }
     }
     
     func testUpdateElement() {
-        final class Element: FetchableRecord {
+        struct Element: Identifiable, Equatable {
+            var identity: Int
             var name: String
             var updateCount = 0
-            
-            init(row: Row) {
-                self.name = row["name"]
-            }
         }
         
-        var reducer = RecordSetDifferenciator<Element>(
-            key: { (row: Row) in RowValue(dbValues: [row["id"]]) },
-            initialElements: [],
-            updateElement: { (element: Element, row: Row) in
-                let new = Element(row: row)
-                new.updateCount = element.updateCount + 1
-                return new
+        var differ = IdentifiableSetDiffer<Element>(
+            updateElement: { (oldElement, newElement) in
+                var newElement = newElement
+                newElement.updateCount = oldElement.updateCount + 1
+                return newElement
         })
         
         do {
-            let diff = reducer.diff([["id": 1, "name": "Arthur"]])
+            let diff = differ.diff([Element(identity: 1, name: "Arthur", updateCount: 0)])
             XCTAssertEqual(diff.inserted.count, 1)
             XCTAssertEqual(diff.inserted[0].name, "Arthur")
             XCTAssertEqual(diff.inserted[0].updateCount, 0)
@@ -122,7 +112,7 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([["id": 1, "name": "Barbara"]])
+            let diff = differ.diff([Element(identity: 1, name: "Barbara", updateCount: 0)])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
             XCTAssertEqual(diff.updated[0].name, "Barbara")
@@ -131,7 +121,7 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([["id": 1, "name": "Craig"]])
+            let diff = differ.diff([Element(identity: 1, name: "Craig", updateCount: 0)])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertEqual(diff.updated.count, 1)
             XCTAssertEqual(diff.updated[0].name, "Craig")
@@ -140,7 +130,7 @@ class RecordSetDifferenciatorTests: XCTestCase {
         }
         
         do {
-            let diff = reducer.diff([])
+            let diff = differ.diff([])
             XCTAssertTrue(diff.inserted.isEmpty)
             XCTAssertTrue(diff.updated.isEmpty)
             XCTAssertEqual(diff.deleted.count, 1)
@@ -150,7 +140,7 @@ class RecordSetDifferenciatorTests: XCTestCase {
     }
     
     static var allTests = [
-        ("testReducer", testReducer),
+        ("testDiff", testDiff),
         ("testUpdateElement", testUpdateElement),
         ]
 }

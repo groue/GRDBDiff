@@ -142,7 +142,7 @@ extension PlacesViewController: MKMapViewDelegate {
         // We want to track the sets of inserted, deleted, and updated places,
         // so that we can update the mapView accordingly.
         //
-        // We'll use the ValueObservation.setDifferences(...) method
+        // We'll use the ValueObservation.setDifferencesFromRows(...) method
         // provided by GRDBDiff.
         //
         // It can compute diffs from arrays of records ordered by primary key.
@@ -155,11 +155,11 @@ extension PlacesViewController: MKMapViewDelegate {
         // The map may already contain place annotations. The differences have
         // to take them in account.
         //
-        // ValueObservation.setDifferences(...) accepts an initialElements
-        // parameter, which is an array ordered by primary key:
+        // ValueObservation.setDifferencesFromRows(...) accepts an
+        // initialElements parameter, which is an array ordered by primary key:
         let initialAnnotations = mapView.annotations
             .compactMap { $0 as? PlaceAnnotation }
-            .sorted { $0.identity < $1.identity }
+            .sorted { $0.place.id! < $1.place.id! }
         
         // Removing and adding annotations in a map view is straightforward.
         // But updating annotations needs a special care:
@@ -176,11 +176,11 @@ extension PlacesViewController: MKMapViewDelegate {
         // So let's reuse annotations, and wait until we are back on the main
         // queue before we modify the annotation on the map (this will happen
         // in the updateMapView(with:) method below.
-        let diffObservation = annotationsObservation.setDifferences(
+        let diffObservation = annotationsObservation.setDifferencesFromRows(
             initialElements: initialAnnotations,
-            updateElement: { reusedAnnotation, newAnnotation in
+            updateElementFromRow: { reusedAnnotation, newRow in
                 // Not on the main queue here
-                reusedAnnotation.nextCoordinate = newAnnotation.coordinate
+                reusedAnnotation.nextPlace = Place(row: newRow)
                 return reusedAnnotation
         })
         
@@ -196,7 +196,7 @@ extension PlacesViewController: MKMapViewDelegate {
         for annotation in diff.updated {
             // Modify the annotation now, on the main thread.
             // See startAnnotationsObservation() for a longer explanation.
-            annotation.coordinate = annotation.nextCoordinate!
+            annotation.place = annotation.nextPlace!
         }
         
         zoomOnPlaces(animated: true)
@@ -253,28 +253,38 @@ extension PlacesViewController: MKMapViewDelegate {
 /// - FetchableRecord makes it possible to fetch annotations from the database.
 /// - TableRecord makes it possible to define the
 ///   `PlaceAnnotation.orderByPrimaryKey()` observed request.
-/// - Identifiable makes it possible to use the
-///   `ValueObservation.setDifferences(...)` method.
+/// - TableRecord also makes it possible to use the
+///   `ValueObservation.setDifferencesFromRows(...)` method.
+/// - PersistableRecord makes it possible to provide initial elements to the
+///   `ValueObservation.setDifferencesFromRows(...)` method.
 private final class PlaceAnnotation:
-    NSObject, MKAnnotation, FetchableRecord, TableRecord, Identifiable
+    NSObject, MKAnnotation, FetchableRecord, TableRecord, PersistableRecord
 {
     /// Part of the TableRecord protocol
     static let databaseTableName = Place.databaseTableName
+    
+    /// The place
+    var place: Place {
+        willSet { willChangeValue(for: \.coordinate) }
+        didSet { didChangeValue(for: \.coordinate) }
+    }
 
     /// The annotation coordinate, KVO-compliant.
-    @objc dynamic var coordinate: CLLocationCoordinate2D
+    @objc var coordinate: CLLocationCoordinate2D {
+        return place.coordinate
+    }
     
     /// Used during database observation.
     /// See PlacesViewController.startAnnotationsObservation().
-    var nextCoordinate: CLLocationCoordinate2D?
-    
-    /// Part of the Identifiable protocol
-    var identity: Int64
+    var nextPlace: Place?
 
     /// Part of the FetchableRecord protocol
     init(row: Row) {
-        let place = Place(row: row)
-        self.coordinate = place.coordinate
-        self.identity = place.id! // not nil because the place comes from the database
+        self.place = Place(row: row)
+    }
+    
+    /// Part of the PersistableRecord protocol
+    func encode(to container: inout PersistenceContainer) {
+        place.encode(to: &container)
     }
 }

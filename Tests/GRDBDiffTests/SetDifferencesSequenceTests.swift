@@ -27,7 +27,7 @@ final class SetDifferencesSequenceTests: XCTestCase {
                 switch element {
                 case .deleted(let old):
                     elements.append("-\(old.identity)")
-                case .updated(let old, _):
+                case .common(let old, _):
                     elements.append("=\(old.identity)")
                 case .inserted(let new):
                     elements.append("+\(new.identity)")

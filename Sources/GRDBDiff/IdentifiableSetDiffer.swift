@@ -1,16 +1,12 @@
-struct IdentifiableSetDifferenciator<Element: Identifiable>
+struct IdentifiableSetDiffer<Element: Identifiable>
     where Element: Equatable,
     Element.Identity: Comparable
 {
     private let updateElement: (Element, Element) -> Element
     private var oldElements: [Element] = []
     
-    init(
-        initialElements: [Element],
-        updateElement: @escaping (Element, Element) -> Element)
-    {
+    init(updateElement: @escaping (Element, Element) -> Element) {
         self.updateElement = updateElement
-        self.oldElements = initialElements
     }
     
     mutating func diff<S: Sequence>(_ elements: S) -> SetDifferences<Element> where S.Element == Element {
@@ -24,7 +20,7 @@ struct IdentifiableSetDifferenciator<Element: Identifiable>
                 diff.inserted.append(new)
                 newElements.append(new)
                 
-            case .updated(let old, let new):
+            case .common(let old, let new):
                 if new == old {
                     // Unchanged. Keep old element, so that we reuse reference types.
                     newElements.append(old)

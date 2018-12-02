@@ -19,7 +19,7 @@ struct SetDifferencesSequence<Old: Sequence, New: Sequence>: IteratorProtocol, S
         /// An element only found in the new sequence:
         case inserted(New.Element)
         /// Old and new elements share the same key:
-        case updated(Old.Element, New.Element)
+        case common(Old.Element, New.Element)
         /// An element only found in the old sequence:
         case deleted(Old.Element)
     }
@@ -52,7 +52,7 @@ struct SetDifferencesSequence<Old: Sequence, New: Sequence>: IteratorProtocol, S
             } else if oldId == newId {
                 self.oldElem = oldIter.next()
                 self.newElem = newIter.next()
-                return .updated(old, new)
+                return .common(old, new)
             } else {
                 self.oldElem = oldIter.next()
                 return .deleted(old)
