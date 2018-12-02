@@ -9,7 +9,21 @@ Since it is possible to [track database changes](https://github.com/groue/GRDB.s
 
 **There are many diff algorithms**, which perform various kinds of comparisons. GRDBDiff ships with a few of them. Make sure you pick one that suits your needs.
 
+- [Demo Application](#demo-application)
 - [Set Differences]
+- [UITableView and UICollectionView Animations]
+
+
+## Demo Application
+
+The repository comes with a [demo application] that shows you:
+
+- How to synchronize the annotations on a MKMapView with the content of the database.
+- How to animate a table view according to changes in the database.
+
+| | |
+| :-----: | :-----: |
+| ![PlayersViewController Screenshot](Documentation/DemoApp/Screenshots/PlayersViewController.png) | ![PlacesViewController Screenshot](Documentation/DemoApp/Screenshots/PlacesViewController.png) |
 
 
 ## Set Differences
@@ -172,7 +186,7 @@ let diffObservation = placesObservation
 The `initialElements` parameter is an array of elements used to compute the first diff. Make sure this array are ordered by identity, and does not contain two elements with the same identity. You'll get wrong results otherwise.
 
 
-## The Identifiable Protocol
+### The Identifiable Protocol
 
 ```swift
 protocol Identifiable {
@@ -188,8 +202,17 @@ When an identifiable type also adopts the Equatable protocol, two values that ar
 However, two values that share the same identity may not be equal. In GRDBDiff, a value has been "updated" if two versions share the same identity, but are not equal.
 
 
+## UITableView and UICollectionView Animations
+
+GRDBDiff does not ship with any diff algorithm able to perform such animation.
+
+But you can leverage third-party libraries. See the [demo application] for an example of integration of [Differ] with GRDB.
+
+
 [GRDB]: https://github.com/groue/GRDB.swift
+[demo application]: Documentation/DemoApp/README.md
 [Set Differences]: #set-differences
+[UITableView and UICollectionView Animations]: #uitableview-and-uicollectionview-animations
 [Record]: https://github.com/groue/GRDB.swift/blob/master/README.md#records
 [FetchableRecord]: https://github.com/groue/GRDB.swift/blob/master/README.md#fetchablerecord-protocol
 [TableRecord]: https://github.com/groue/GRDB.swift/blob/master/README.md#tablerecord-protocol
@@ -200,3 +223,4 @@ However, two values that share the same identity may not be equal. In GRDBDiff, 
 [ValueObservation.setDifferencesFromRequest(initialRecords:)]: #valueobservationsetdifferencesfromrequestinitialrecords
 [ValueObservation.setDifferences()]: #valueobservationsetdifferences
 [Identifiable]: #the-identifiable-protocol
+[Differ]: https://github.com/tonyarnold/Differ
