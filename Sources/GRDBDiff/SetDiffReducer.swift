@@ -53,7 +53,7 @@ extension ValueObservation where
     Reducer._Request.RowDecoder: FetchableRecord & MutablePersistableRecord
 {
     public func setDifferencesFromRequest(
-        initialRecords: [Reducer._Request.RowDecoder] = [], // TODO: test
+        initialRecords: [Reducer._Request.RowDecoder], // TODO: test
         updateRecord: @escaping (Reducer._Request.RowDecoder, Row) -> Reducer._Request.RowDecoder = { Reducer._Request.RowDecoder(row: $1) })
         -> ValueObservation<RequestSetDiffReducer<Reducer>>
     {
