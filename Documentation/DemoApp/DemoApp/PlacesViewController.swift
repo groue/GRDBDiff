@@ -20,11 +20,6 @@ class PlacesViewController: UIViewController {
         setupDatabaseObservation()
     }
     
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        navigationController?.setToolbarHidden(false, animated: animated)
-    }
-    
     func setupDatabaseObservation() {
         if isObservingDatabase {
             placeCountObserver = startPlaceCountObservation()
@@ -39,7 +34,6 @@ class PlacesViewController: UIViewController {
 // MARK: - Actions
 
 extension PlacesViewController {
-    
     @IBAction func deletePlaces() {
         try! dbPool.write { db in
             _ = try Place.deleteAll(db)

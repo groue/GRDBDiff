@@ -14,6 +14,8 @@
 		564CE4BE21B118C400652B19 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 564CE4BC21B118C400652B19 /* LaunchScreen.storyboard */; };
 		564CE4C621B11C0E00652B19 /* AppDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564CE4C521B11C0E00652B19 /* AppDatabase.swift */; };
 		564CE4C821B11CCC00652B19 /* Place.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564CE4C721B11CCC00652B19 /* Place.swift */; };
+		564CE58F21B435F200652B19 /* Player.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564CE58E21B435F200652B19 /* Player.swift */; };
+		564CE59121B437AD00652B19 /* PlayersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 564CE59021B437AD00652B19 /* PlayersViewController.swift */; };
 		713E3CAF494E722404359254 /* Pods_DemoApp.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7BCAF23470B0E615B0871A39 /* Pods_DemoApp.framework */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +29,8 @@
 		564CE4BF21B118C400652B19 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		564CE4C521B11C0E00652B19 /* AppDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDatabase.swift; sourceTree = "<group>"; };
 		564CE4C721B11CCC00652B19 /* Place.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Place.swift; sourceTree = "<group>"; };
+		564CE58E21B435F200652B19 /* Player.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Player.swift; sourceTree = "<group>"; };
+		564CE59021B437AD00652B19 /* PlayersViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlayersViewController.swift; sourceTree = "<group>"; };
 		7BCAF23470B0E615B0871A39 /* Pods_DemoApp.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_DemoApp.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		E23BF3E288A07E5473A395A4 /* Pods-DemoApp.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DemoApp.debug.xcconfig"; path = "Pods/Target Support Files/Pods-DemoApp/Pods-DemoApp.debug.xcconfig"; sourceTree = "<group>"; };
 		FF714DE0E863D216F626FA41 /* Pods-DemoApp.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-DemoApp.release.xcconfig"; path = "Pods/Target Support Files/Pods-DemoApp/Pods-DemoApp.release.xcconfig"; sourceTree = "<group>"; };
@@ -77,7 +81,9 @@
 				564CE4B321B118C200652B19 /* AppDelegate.swift */,
 				564CE4C521B11C0E00652B19 /* AppDatabase.swift */,
 				564CE4C721B11CCC00652B19 /* Place.swift */,
+				564CE58E21B435F200652B19 /* Player.swift */,
 				564CE4B521B118C200652B19 /* PlacesViewController.swift */,
+				564CE59021B437AD00652B19 /* PlayersViewController.swift */,
 				564CE4B721B118C200652B19 /* Main.storyboard */,
 				564CE4BA21B118C400652B19 /* Assets.xcassets */,
 				564CE4BC21B118C400652B19 /* LaunchScreen.storyboard */,
@@ -194,6 +200,7 @@
 			);
 			inputPaths = (
 				"${SRCROOT}/Pods/Target Support Files/Pods-DemoApp/Pods-DemoApp-frameworks.sh",
+				"${BUILT_PRODUCTS_DIR}/Differ/Differ.framework",
 				"${BUILT_PRODUCTS_DIR}/GRDB.swift/GRDB.framework",
 				"${BUILT_PRODUCTS_DIR}/GRDBDiff/GRDBDiff.framework",
 			);
@@ -201,6 +208,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/Differ.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GRDB.framework",
 				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/GRDBDiff.framework",
 			);
@@ -219,7 +227,9 @@
 				564CE4C621B11C0E00652B19 /* AppDatabase.swift in Sources */,
 				564CE4B621B118C200652B19 /* PlacesViewController.swift in Sources */,
 				564CE4B421B118C200652B19 /* AppDelegate.swift in Sources */,
+				564CE58F21B435F200652B19 /* Player.swift in Sources */,
 				564CE4C821B11CCC00652B19 /* Place.swift in Sources */,
+				564CE59121B437AD00652B19 /* PlayersViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

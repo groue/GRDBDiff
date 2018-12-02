@@ -3,4 +3,5 @@ target 'DemoApp' do
   use_frameworks!
   pod 'GRDBDiff', :path => '../..'
   pod 'GRDB.swift', :path => '../../../GRDB.swift' # dev only
+  pod 'Differ', '~> 1.0'
 end
