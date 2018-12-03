@@ -5,10 +5,20 @@ import GRDBDiff
 
 class PlacesViewController: UIViewController {
     @IBOutlet private var mapView: MKMapView!
-    @IBOutlet private var topToolbar: UIToolbar!
-    private var databaseObservationSwitch: UISwitch!
-    private var isObservingDatabase = true {
-        didSet { setupDatabaseObservation() }
+    private var favoritesButton: UIButton!
+    private var isTrackingFavorites = false {
+        didSet {
+            setupTitle()
+            setupMapView()
+            favoritesButton.isSelected = isTrackingFavorites
+        }
+    }
+    private var placesRequest: QueryInterfaceRequest<Place> {
+        if isTrackingFavorites {
+            return Place.favorites()
+        } else {
+            return Place.all()
+        }
     }
     private var placeCountObserver: TransactionObserver?
     private var annotationsObserver: TransactionObserver?
@@ -16,18 +26,9 @@ class PlacesViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupToolbarItems()
-        setupDatabaseObservationSwitch()
-        setupDatabaseObservation()
-    }
-    
-    func setupDatabaseObservation() {
-        if isObservingDatabase {
-            placeCountObserver = startPlaceCountObservation()
-            annotationsObserver = startAnnotationsObservation()
-        } else {
-            placeCountObserver = nil
-            annotationsObserver = nil
-        }
+        setupFavoritesButton()
+        setupTitle()
+        setupMapView()
     }
 }
 
@@ -61,6 +62,7 @@ extension PlacesViewController {
                 // Update some places
                 for var place in try Place.fetchAll(db) where Bool.random() {
                     place.coordinate = CLLocationCoordinate2D.random(withinDistance: 300, from: place.coordinate)
+                    place.isFavorite = Bool.random()
                     try place.update(db)
                 }
             }
@@ -75,30 +77,22 @@ extension PlacesViewController {
         }
     }
     
-    @IBAction func toggleDatabaseObservation() {
-        isObservingDatabase.toggle()
+    @IBAction func toggleFavorites() {
+        isTrackingFavorites.toggle()
     }
 }
 
 // MARK: - View
 
 extension PlacesViewController: UIToolbarDelegate {
-    func setupDatabaseObservationSwitch() {
-        databaseObservationSwitch = UISwitch(frame: .zero)
-        databaseObservationSwitch.sizeToFit()
-        databaseObservationSwitch.isOn = isObservingDatabase
-        databaseObservationSwitch.addTarget(self, action: #selector(toggleDatabaseObservation), for: .valueChanged)
+    func setupFavoritesButton() {
+        favoritesButton = UIButton(type: .system)
+        favoritesButton.setTitle("Favorites", for: .normal)
+        favoritesButton.titleLabel?.font = UIFont.systemFont(ofSize: 17)
+        favoritesButton.addTarget(self, action: #selector(toggleFavorites), for: .touchUpInside)
         
-        let label = UILabel(frame: .zero)
-        label.text = "Observe Database"
-        label.font = UIFont.preferredFont(forTextStyle: .body)
-        label.sizeToFit()
-        
-        topToolbar.items = [
-            UIBarButtonItem(customView: label),
-            UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(customView: databaseObservationSwitch),
-        ]
+        let barButtomItem = UIBarButtonItem(customView: favoritesButton)
+        navigationItem.rightBarButtonItem = barButtomItem
     }
     
     private func setupToolbarItems() {
@@ -119,10 +113,10 @@ extension PlacesViewController: UIToolbarDelegate {
 // MARK: - Database Observation
 
 extension PlacesViewController: MKMapViewDelegate {
-    func startPlaceCountObservation() -> TransactionObserver {
+    func setupTitle() {
         // Track changes in the number of places
-        return try! ValueObservation
-            .trackingCount(Place.all())
+        placeCountObserver = try! ValueObservation
+            .trackingCount(placesRequest)
             .start(in: dbPool) { [unowned self] count in
                 switch count {
                 case 0: self.navigationItem.title = "No Place"
@@ -132,7 +126,7 @@ extension PlacesViewController: MKMapViewDelegate {
         }
     }
     
-    private func startAnnotationsObservation() -> TransactionObserver {
+    private func setupMapView() {
         // We want to track the sets of inserted, deleted, and updated places,
         // so that we can update the mapView accordingly.
         //
@@ -141,7 +135,9 @@ extension PlacesViewController: MKMapViewDelegate {
         //
         // It can compute diffs from arrays of records ordered by primary key.
         // So let's observe database annotations, correctly ordered:
-        let annotationsRequest = PlaceAnnotation.orderByPrimaryKey()
+        let annotationsRequest = placesRequest
+            .orderByPrimaryKey()
+            .asRequest(of: PlaceAnnotation.self)
         let annotationsObservation = ValueObservation.trackingAll(annotationsRequest)
         
         // Now let's care of inserted, deleted, and updated annotations.
@@ -179,7 +175,7 @@ extension PlacesViewController: MKMapViewDelegate {
         })
         
         // Start the database observation.
-        return try! diffObservation.start(in: dbPool) { [unowned self] diff in
+        annotationsObserver = try! diffObservation.start(in: dbPool) { [unowned self] diff in
             self.updateMapView(with: diff)
         }
     }
@@ -191,6 +187,11 @@ extension PlacesViewController: MKMapViewDelegate {
             // On the main thread: we can update the annotation.
             // See startAnnotationsObservation() for a longer explanation.
             annotation.place = annotation.nextPlace!
+            
+            // Update color
+            if let view = mapView.view(for: annotation) as? MKMarkerAnnotationView {
+                view.markerTintColor = annotation.place.isFavorite ? .green : .red
+            }
         }
         
         zoomOnPlaces(animated: true)
@@ -217,24 +218,24 @@ extension PlacesViewController: MKMapViewDelegate {
         if zoomRect.size.width == 0 && zoomRect.size.height == 0 {
             mapView.setCenter(zoomRect.origin.coordinate, animated: animated)
         } else {
-            let topToolbarHeight = topToolbar.frame.height
-            let edgePadding = UIEdgeInsets(
-                top: 80 + topToolbarHeight,
-                left: 40,
-                bottom: 40,
-                right: 40)
+            let edgePadding = UIEdgeInsets(top: 80, left: 40, bottom: 40, right: 40)
             mapView.setVisibleMapRect(zoomRect, edgePadding: edgePadding, animated: animated)
         }
     }
     
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        if let view = mapView.dequeueReusableAnnotationView(withIdentifier: "annotation") {
-            view.annotation = annotation
-            view.displayPriority = .required
-            return view
+        guard let placeAnnotation = annotation as? PlaceAnnotation else {
+            return nil
         }
-        let view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "annotation")
+        let view: MKMarkerAnnotationView
+        if let recycledView = mapView.dequeueReusableAnnotationView(withIdentifier: "annotation") as? MKMarkerAnnotationView {
+            view = recycledView
+        } else {
+            view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: "annotation")
+            view.annotation = annotation
+        }
         view.displayPriority = .required
+        view.markerTintColor = placeAnnotation.place.isFavorite ? .green : .red
         return view
     }
 }

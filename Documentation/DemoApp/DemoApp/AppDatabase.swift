@@ -38,6 +38,7 @@ struct AppDatabase {
                 t.autoIncrementedPrimaryKey("id")
                 t.column("latitude", .double).notNull()
                 t.column("longitude", .double).notNull()
+                t.column("isFavorite", .boolean).notNull()
             }
             
             try db.create(table: "player") { t in

@@ -5,6 +5,7 @@ import GRDB
 // A place
 struct Place: Codable {
     var id: Int64?
+    var isFavorite: Bool
     var latitude: CLLocationDegrees
     var longitude: CLLocationDegrees
     var coordinate: CLLocationCoordinate2D {
@@ -17,10 +18,16 @@ struct Place: Codable {
         }
     }
     
-    init(id: Int64?, coordinate: CLLocationCoordinate2D) {
+    /// Customize coding keys so that they can be used as GRDB columns
+    enum CodingKeys: String, CodingKey, ColumnExpression {
+        case id, latitude, longitude, isFavorite
+    }
+
+    init(id: Int64?, coordinate: CLLocationCoordinate2D, isFavorite: Bool) {
         self.id = id
         self.latitude = coordinate.latitude
         self.longitude = coordinate.longitude
+        self.isFavorite = isFavorite
     }
 }
 
@@ -37,11 +44,18 @@ extension Place: MutablePersistableRecord {
 }
 
 extension Place {
+    /// A request that fetches favorite places
+    static func favorites() -> QueryInterfaceRequest<Place> {
+        return Place.filter(CodingKeys.isFavorite)
+    }
+}
+
+extension Place {
     /// Returns a random place
     static func random() -> Place {
         let paris = CLLocationCoordinate2D(latitude: 48.85341, longitude: 2.3488)
         let coordinate = CLLocationCoordinate2D.random(withinDistance: 8000, from: paris)
-        return Place(id: nil, coordinate: coordinate)
+        return Place(id: nil, coordinate: coordinate, isFavorite: Bool.random())
     }
 }
 
