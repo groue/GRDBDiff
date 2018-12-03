@@ -188,9 +188,9 @@ extension PlacesViewController: MKMapViewDelegate {
             // See startAnnotationsObservation() for a longer explanation.
             annotation.place = annotation.nextPlace!
             
-            // Update color
+            // Update eventual annotation view if present
             if let view = mapView.view(for: annotation) as? MKMarkerAnnotationView {
-                view.markerTintColor = annotation.place.isFavorite ? .green : .red
+                configure(view, for: annotation)
             }
         }
         
@@ -224,7 +224,7 @@ extension PlacesViewController: MKMapViewDelegate {
     }
     
     func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        guard let placeAnnotation = annotation as? PlaceAnnotation else {
+        guard let annotation = annotation as? PlaceAnnotation else {
             return nil
         }
         let view: MKMarkerAnnotationView
@@ -235,8 +235,12 @@ extension PlacesViewController: MKMapViewDelegate {
             view.annotation = annotation
         }
         view.displayPriority = .required
-        view.markerTintColor = placeAnnotation.place.isFavorite ? .green : .red
+        configure(view, for: annotation)
         return view
+    }
+    
+    private func configure(_ view: MKMarkerAnnotationView, for annotation: PlaceAnnotation) {
+        view.markerTintColor = annotation.place.isFavorite ? .orange : view.tintColor
     }
 }
 
@@ -245,11 +249,15 @@ extension PlacesViewController: MKMapViewDelegate {
 /// It adopts all the proocols we need in PlacesViewController.startAnnotationsObservation().
 ///
 /// - MKAnnotation so that it can feed the map view.
+///
 /// - FetchableRecord makes it possible to fetch annotations from the database.
+///
 /// - TableRecord makes it possible to define the
 ///   `PlaceAnnotation.orderByPrimaryKey()` observed request.
+///
 /// - TableRecord also makes it possible to use the
 ///   `ValueObservation.setDifferencesFromRequest(...)` method.
+///
 /// - PersistableRecord makes it possible to provide initial elements to the
 ///   `ValueObservation.setDifferencesFromRequest(...)` method.
 private final class PlaceAnnotation:
