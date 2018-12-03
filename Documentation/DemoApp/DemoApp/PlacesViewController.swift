@@ -84,7 +84,7 @@ extension PlacesViewController {
 
 // MARK: - View
 
-extension PlacesViewController: UIToolbarDelegate {
+extension PlacesViewController {
     func setupFavoritesButton() {
         favoritesButton = UIButton(type: .system)
         favoritesButton.setTitle("Favorites", for: .normal)
@@ -103,10 +103,6 @@ extension PlacesViewController: UIToolbarDelegate {
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
             UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
         ]
-    }
-    
-    func position(for bar: UIBarPositioning) -> UIBarPosition {
-        return UIBarPosition.topAttached
     }
     
     func setupTitle() {
