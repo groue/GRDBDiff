@@ -5,7 +5,7 @@ GRDBDiff
 
 ### Various diff algorithms for SQLite, based on [GRDB].
 
-Since it is possible to [track database changes](https://github.com/groue/GRDB.swift/blob/master/README.md#valueobservation), it is a natural desire to compute diffs between two consecutive observed values.
+Since it is possible to [observe database changes](https://github.com/groue/GRDB.swift/blob/master/README.md#valueobservation), it is a natural desire to compute diffs between two consecutive observed values.
 
 **There are many diff algorithms**, which perform various kinds of comparisons. GRDBDiff ships with a few of them. Make sure you pick one that suits your needs.
 
