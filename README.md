@@ -141,7 +141,7 @@ This method gives the same results as [setDifferencesFromRequest()]. The differe
 
 - The tracked record type must conform to a [PersistableRecord] protocol, on top of [FetchableRecord] and [TableRecord].
 
-- The `startingFrom` parameter is passed an array of records used to compute the first diff. Make sure this array are ordered by primary key. You'll get wrong results otherwise.
+- The `startingFrom` parameter is passed an array of records used to compute the first diff. Make sure this array is ordered by primary key. You'll get wrong results otherwise.
 
 
 ### setDifferences()
@@ -212,7 +212,7 @@ let diffObservation = elementsObservation
 
 #### The Optional `startingFrom` Parameter
 
-The `startingFrom` parameter is passed an array of elements used to compute the first diff. Make sure this array are ordered by identity, and does not contain two elements with the same identity. You'll get wrong results otherwise.
+The `startingFrom` parameter is passed an array of elements used to compute the first diff. Make sure this array is ordered by identity, and does not contain two elements with the same identity. You'll get wrong results otherwise.
 
 
 ## UITableView and UICollectionView Animations
