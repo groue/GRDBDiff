@@ -6,6 +6,8 @@ import GRDBDiff
 class PlacesViewController: UIViewController {
     @IBOutlet private var mapView: MKMapView!
     private var favoritesButton: UIButton!
+    
+    /// If true, the map displays only favorite places
     private var displaysFavorites = false {
         didSet {
             setupTitle()
@@ -82,7 +84,7 @@ extension PlacesViewController {
     }
 }
 
-// MARK: - View
+// MARK: - Views
 
 extension PlacesViewController {
     func setupFavoritesButton() {
@@ -119,7 +121,7 @@ extension PlacesViewController {
     }
 }
 
-// MARK: - Database Observation
+// MARK: - Map View
 
 extension PlacesViewController: MKMapViewDelegate {
     private func setupMapView() {
