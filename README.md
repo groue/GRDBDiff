@@ -202,7 +202,7 @@ When you need to customize handling of updated elements, provide a `onUpdate` cl
 For example, this observation reuses element instances:
 
 ```swift
-let diffObservation = placesObservation
+let diffObservation = elementsObservation
     .setDifferences(onUpdate: { (old: Element, new: Element) in
         old.update(from: new)
         return old
