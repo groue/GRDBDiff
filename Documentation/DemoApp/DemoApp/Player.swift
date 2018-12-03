@@ -12,6 +12,9 @@ struct Player: Codable {
     }
 }
 
+/// Adopt Equatable so that we can leverage the Differ algorithm.
+extension Player: Equatable { }
+
 /// Adopt RowConvertible so that we can fetch players from the database.
 /// Implementation is fully derived from Codable adoption.
 extension Player: FetchableRecord { }
@@ -23,9 +26,6 @@ extension Player: MutablePersistableRecord {
         id = rowID
     }
 }
-
-/// Adopt Equatable so that we can leverage the Differ CocoaPod.
-extension Player: Equatable { }
 
 extension Player {
     /// A request that sorts players by name.
@@ -44,12 +44,7 @@ extension Player {
     
     /// Returns a random player
     static func random() -> Player {
-        return Player(id: nil, name: randomName(), score: randomScore())
-    }
-    
-    /// Returns a random name
-    static func randomName() -> String {
-        return names.randomElement()!
+        return Player(id: nil, name: names.randomElement()!, score: randomScore())
     }
     
     /// Returns a random score

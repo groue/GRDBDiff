@@ -18,7 +18,7 @@ Since it is possible to [track database changes](https://github.com/groue/GRDB.s
 
 The repository comes with a [demo application] that shows you:
 
-- How to synchronize the annotations on a MKMapView with the content of the database.
+- How to synchronize the annotations on a map view with the content of the database.
 - How to animate a table view according to changes in the database.
 
 | | |

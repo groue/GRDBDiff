@@ -67,22 +67,21 @@ extension PlayersViewController {
             if try Player.fetchCount(db) == 0 {
                 // Insert players
                 for _ in 0..<8 {
-                    var player = Player(id: nil, name: Player.randomName(), score: Player.randomScore())
+                    var player = Player.random()
                     try player.insert(db)
                 }
             } else {
                 // Insert a player
-                if arc4random_uniform(2) == 0 {
-                    var player = Player(id: nil, name: Player.randomName(), score: Player.randomScore())
+                if Bool.random() {
+                    var player = Player.random()
                     try player.insert(db)
                 }
                 // Delete a random player
-                if arc4random_uniform(2) == 0 {
+                if Bool.random() {
                     try Player.order(sql: "RANDOM()").limit(1).deleteAll(db)
                 }
                 // Update some players
-                for player in try Player.fetchAll(db) where arc4random_uniform(2) == 0 {
-                    var player = player
+                for var player in try Player.fetchAll(db) where Bool.random() {
                     player.score = Player.randomScore()
                     try player.update(db)
                 }
