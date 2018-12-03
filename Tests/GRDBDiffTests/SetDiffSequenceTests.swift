@@ -105,6 +105,51 @@ final class SetDiffSequenceTests: XCTestCase {
             isEqualTo: ["-1", "-2", "-3"])
         //
         assertDiff(
+            from: [1, 2, 3],
+            to: [4, 5, 6],
+            isEqualTo: ["-1", "-2", "-3", "+4", "+5", "+6"])
+        assertDiff(
+            from: [4, 5, 6],
+            to: [1, 2, 3],
+            isEqualTo: ["+1", "+2", "+3", "-4", "-5", "-6"])
+        //
+        assertDiff(
+            from: [1, 2, 3],
+            to: [4, 5],
+            isEqualTo: ["-1", "-2", "-3", "+4", "+5"])
+        assertDiff(
+            from: [4, 5],
+            to: [1, 2, 3],
+            isEqualTo: ["+1", "+2", "+3", "-4", "-5"])
+        //
+        assertDiff(
+            from: [1, 2, 3],
+            to: [4],
+            isEqualTo: ["-1", "-2", "-3", "+4"])
+        assertDiff(
+            from: [4],
+            to: [1, 2, 3],
+            isEqualTo: ["+1", "+2", "+3", "-4"])
+        //
+        assertDiff(
+            from: [1, 2],
+            to: [4, 5, 6],
+            isEqualTo: ["-1", "-2", "+4", "+5", "+6"])
+        assertDiff(
+            from: [4, 5, 6],
+            to: [1, 2],
+            isEqualTo: ["+1", "+2", "-4", "-5", "-6"])
+        //
+        assertDiff(
+            from: [1],
+            to: [4, 5, 6],
+            isEqualTo: ["-1", "+4", "+5", "+6"])
+        assertDiff(
+            from: [4, 5, 6],
+            to: [1],
+            isEqualTo: ["+1", "-4", "-5", "-6"])
+        //
+        assertDiff(
             from: [1, 2, 3, 5, 7, 11, 13, 17, 23],
             to: [1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23],
             isEqualTo: ["=1", "-2", "=3", "=5", "=7", "+9", "=11", "=13", "+15", "=17", "+19", "+21", "=23"])
