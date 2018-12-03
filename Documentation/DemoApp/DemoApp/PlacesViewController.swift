@@ -148,13 +148,14 @@ extension PlacesViewController: MKMapViewDelegate {
         // but updating annotations needs a special care:
         //
         // It is a good practice to reuse instances of annotations, for best
-        // visual results. However, the modifications must happen on the main
-        // thread.
+        // visual results, and preservation of the user's selection.
+        // However, the modifications must happen on the main thread.
         annotationsObserver = try! ValueObservation
             .trackingAll(annotationsRequest)
             .setDifferencesFromRequest(startingFrom: currentAnnotations, onUpdate: { reusedAnnotation, newRow in
-                // Not on the main thread here: wait for updateMapView(with:) below
-                reusedAnnotation.nextPlace = Place(row: newRow)
+                // Not on the main thread here: remember the new place, but
+                // wait for updateMapView(with:) below.
+                reusedAnnotation.newPlace = Place(row: newRow)
                 return reusedAnnotation
             })
             .start(in: dbPool) { [unowned self] diff in
@@ -168,7 +169,7 @@ extension PlacesViewController: MKMapViewDelegate {
         mapView.addAnnotations(diff.inserted)
         for annotation in diff.updated {
             // See setupMapView() for an explanation.
-            annotation.place = annotation.nextPlace!
+            annotation.place = annotation.newPlace!
             
             // Update eventual annotation view if present
             if let view = mapView.view(for: annotation) as? MKMarkerAnnotationView {
@@ -255,7 +256,7 @@ private final class PlaceAnnotation:
     
     /// Used during database observation.
     /// See PlacesViewController.setupMapView().
-    var nextPlace: Place?
+    var newPlace: Place?
     
     /// Part of the FetchableRecord protocol
     init(row: Row) {
