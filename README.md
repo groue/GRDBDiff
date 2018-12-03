@@ -49,7 +49,7 @@ For example:
 ```swift
 // Track favorite places
 let request = Place.filter(Column("favorite")).orderedByPrimaryKey()
-let observer = ValueObservation
+let observer = try ValueObservation
     .trackingAll(request)
     .setDifferencesFromRequest()
     .start(in: dbQueue) { diff: SetDiff<Place> in
