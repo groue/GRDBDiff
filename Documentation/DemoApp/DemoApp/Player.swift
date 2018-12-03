@@ -7,7 +7,7 @@ struct Player: Codable {
     var score: Int
     
     /// Customize coding keys so that they can be used as GRDB columns
-    enum CodingKeys: String, CodingKey, ColumnExpression {
+    private enum CodingKeys: String, CodingKey, ColumnExpression {
         case id, name, score
     }
 }
