@@ -179,6 +179,22 @@ let observer = diffObservation.start(in: dbQueue) { diff: SetDiff<Element> in
 4. Start the observation and enjoy your diffs!
 
 
+#### The Identifiable Protocol
+
+```swift
+protocol Identifiable {
+    associatedtype Identity: Equatable
+    var identity: Identity { get }
+}
+```
+
+Identifiable is the protocol for "identifiable" values, which have an identity.
+
+When an identifiable type also adopts the Equatable protocol, two values that are equal must have the same identity. It is a programmer error to break this rule.
+
+However, two values that share the same identity may not be equal. In GRDBDiff, a value has been "updated" if two versions share the same identity, but are not equal.
+
+
 #### The Optional `onUpdate` Parameter
 
 When you need to customize handling of updated elements, provide a `onUpdate` closure. Its first parameter is an old element. The second one is a new element. It returns the element that should be notified in `diff.updated`. It does not run on the main queue.
@@ -197,22 +213,6 @@ let diffObservation = placesObservation
 #### The Optional `startingFrom` Parameter
 
 The `startingFrom` parameter is passed an array of elements used to compute the first diff. Make sure this array are ordered by identity, and does not contain two elements with the same identity. You'll get wrong results otherwise.
-
-
-### The Identifiable Protocol
-
-```swift
-protocol Identifiable {
-    associatedtype Identity: Equatable
-    var identity: Identity { get }
-}
-```
-
-Identifiable is the protocol for "identifiable" values, which have an identity.
-
-When an identifiable type also adopts the Equatable protocol, two values that are equal must have the same identity. It is a programmer error to break this rule.
-
-However, two values that share the same identity may not be equal. In GRDBDiff, a value has been "updated" if two versions share the same identity, but are not equal.
 
 
 ## UITableView and UICollectionView Animations
