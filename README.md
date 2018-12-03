@@ -32,30 +32,41 @@ What are the elements that were inserted, updated, deleted?
 
 This is the question that **Set Differences** can answer.
 
-Set Differences do not care about the ordering of elements. They are well suited, for example, for synchronizing the annotations in a map view with the content of the database.
+Set Differences do not care about the ordering of elements. They are well suited, for example, for synchronizing the annotations in a map view with the content of the database. But they can not animate table views or collection views, which care a lot about the ordering of their cells.
 
-On the other side, they can not animate the cells in a table view or a collection view.
-
-You track Set Differences with one of those three methods:
-
-- [ValueObservation.setDifferencesFromRequest()]
-- [ValueObservation.setDifferencesFromRequest(startingFrom:)]
-- [ValueObservation.setDifferences()]
-
-Each one of them returns a [ValueObservation] which notifies `SetDiff` values whenever the database changes:
+You track Set Differences with those three [ValueObservation] methods:
 
 ```swift
-struct SetDiff<Element> {
-    var inserted: [Element]
-    var updated: [Element]
-    var deleted: [Element]
+extension ValueObservation {
+    func setDifferencesFromRequest(...) -> ValueObservation
+    func setDifferencesFromRequest(startingFrom:...) -> ValueObservation
+    func setDifferences(...) -> ValueObservation
 }
 ```
 
-Each one of them is made available by the protocols adopted by the type of tracked elements.
+For example:
+
+```swift
+// Track favorite places
+let request = Place.filter(Column("favorite")).orderedByPrimaryKey()
+let observer = ValueObservation
+    .trackingAll(request)
+    .setDifferencesFromRequest()
+    .start(in: dbQueue) { diff: SetDiff<Place> in
+        print(diff.inserted) // [Place]
+        print(diff.updated)  // [Place]
+        print(diff.deleted)  // [Place]
+    }
+```
+
+You will choose one method or the other, depending on the type of the observed values. [Record] types can use `setDifferencesFromRequest`. The more general `setDifferences` variant requires a type that conform to both [Identifiable] and the standard Equatable protocols.
+
+- [setDifferencesFromRequest()]
+- [setDifferencesFromRequest(startingFrom:)]
+- [setDifferences()]
 
 
-### ValueObservation.setDifferencesFromRequest()
+### setDifferencesFromRequest()
 
 #### Usage
 
@@ -124,16 +135,16 @@ let diffObservation = placesObservation
 ```
 
 
-### ValueObservation.setDifferencesFromRequest(startingFrom:)
+### setDifferencesFromRequest(startingFrom:)
 
-This method gives the same results as [ValueObservation.setDifferencesFromRequest()]. The differences are:
+This method gives the same results as [setDifferencesFromRequest()]. The differences are:
 
 - The tracked record type must conform to a [PersistableRecord] protocol, on top of [FetchableRecord] and [TableRecord].
 
 - The `startingFrom` parameter is passed an array of records used to compute the first diff. Make sure this array are ordered by primary key. You'll get wrong results otherwise.
 
 
-### ValueObservation.setDifferences()
+### setDifferences()
 
 #### Usage
 
@@ -221,8 +232,8 @@ But you can leverage third-party libraries. See the [demo application] for an ex
 [PersistableRecord]: https://github.com/groue/GRDB.swift/blob/master/README.md#persistablerecord-protocol
 [request]: https://github.com/groue/GRDB.swift/blob/master/README.md#requests
 [ValueObservation]: https://github.com/groue/GRDB.swift/blob/master/README.md#valueobservation
-[ValueObservation.setDifferencesFromRequest()]: #valueobservationsetdifferencesfromrequest
-[ValueObservation.setDifferencesFromRequest(startingFrom:)]: #valueobservationsetdifferencesfromrequeststartingfrom
-[ValueObservation.setDifferences()]: #valueobservationsetdifferences
+[setDifferencesFromRequest()]: #setdifferencesfromrequest
+[setDifferencesFromRequest(startingFrom:)]: #setdifferencesfromrequeststartingfrom
+[setDifferences()]: #setdifferences
 [Identifiable]: #the-identifiable-protocol
 [Differ]: https://github.com/tonyarnold/Differ
