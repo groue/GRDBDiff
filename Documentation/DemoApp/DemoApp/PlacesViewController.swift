@@ -39,50 +39,24 @@ class PlacesViewController: UIViewController {
 // MARK: - Actions
 
 extension PlacesViewController {
-    @IBAction func deletePlaces() {
-        try! dbPool.write { db in
-            _ = try Place.deleteAll(db)
-        }
+    @IBAction func toggleFavorites() {
+        displaysFavorites.toggle()
     }
     
-    @IBAction func refresh() {
-        try! dbPool.write { db in
-            if try Place.fetchCount(db) == 0 {
-                // Insert places
-                for _ in 0..<5 {
-                    var place = Place.random()
-                    try place.insert(db)
-                }
-            } else {
-                // Insert a place
-                if Bool.random() {
-                    var place = Place.random()
-                    try place.insert(db)
-                }
-                // Delete a random place
-                if Bool.random() {
-                    try Place.order(sql: "RANDOM()").limit(1).deleteAll(db)
-                }
-                // Update some places
-                for var place in try Place.fetchAll(db) where Bool.random() {
-                    place.coordinate = CLLocationCoordinate2D.random(withinDistance: 300, from: place.coordinate)
-                    place.isFavorite = Bool.random()
-                    try place.update(db)
-                }
-            }
-        }
+    @IBAction func deletePlaces() {
+        try! AppDatabase.deletePlaces()
+    }
+    
+    @IBAction func refreshPlaces() {
+        try! AppDatabase.refreshPlaces()
     }
     
     @IBAction func stressTest() {
         for _ in 0..<50 {
             DispatchQueue.global().async {
-                self.refresh()
+                try! AppDatabase.refreshPlaces()
             }
         }
-    }
-    
-    @IBAction func toggleFavorites() {
-        displaysFavorites.toggle()
     }
 }
 
@@ -103,7 +77,7 @@ extension PlacesViewController {
         toolbarItems = [
             UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlaces)),
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh)),
+            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refreshPlaces)),
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
             UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
         ]

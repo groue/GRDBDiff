@@ -1,9 +1,13 @@
 import GRDB
+import CoreLocation
 
-/// A type responsible for initializing the application database.
+/// A type responsible for initializing the application database, and performing
+/// database changes.
 ///
 /// See AppDelegate.setupDatabase()
-struct AppDatabase {
+enum AppDatabase {
+    
+    // MARK: - Database Definition
     
     /// Creates a fully initialized database at path
     static func openDatabase(atPath path: String) throws -> DatabasePool {
@@ -66,5 +70,76 @@ struct AppDatabase {
 //        }
         
         return migrator
+    }
+    
+    // MARK: - Place Modifications
+    
+    static func deletePlaces() throws {
+        try dbPool.write { db in
+            _ = try Place.deleteAll(db)
+        }
+    }
+    
+    static func refreshPlaces() throws {
+        try dbPool.write { db in
+            if try Place.fetchCount(db) == 0 {
+                // Insert places
+                for _ in 0..<5 {
+                    var place = Place.random()
+                    try place.insert(db)
+                }
+            } else {
+                // Insert a place
+                if Bool.random() {
+                    var place = Place.random()
+                    try place.insert(db)
+                }
+                // Delete a random place
+                if Bool.random() {
+                    try Place.order(sql: "RANDOM()").limit(1).deleteAll(db)
+                }
+                // Update some places
+                for var place in try Place.fetchAll(db) where Bool.random() {
+                    place.coordinate = CLLocationCoordinate2D.random(withinDistance: 300, from: place.coordinate)
+                    place.isFavorite = Bool.random()
+                    try place.update(db)
+                }
+            }
+        }
+    }
+
+    // MARK: - Player Modifications
+    
+    static func deletePlayers() throws {
+        try dbPool.write { db in
+            try Player.deleteAll(db)
+        }
+    }
+    
+    static func refreshPlayers() throws {
+        try dbPool.write { db in
+            if try Player.fetchCount(db) == 0 {
+                // Insert players
+                for _ in 0..<8 {
+                    var player = Player.random()
+                    try player.insert(db)
+                }
+            } else {
+                // Insert a player
+                if Bool.random() {
+                    var player = Player.random()
+                    try player.insert(db)
+                }
+                // Delete a random player
+                if Bool.random() {
+                    try Player.order(sql: "RANDOM()").limit(1).deleteAll(db)
+                }
+                // Update some players
+                for var player in try Player.fetchAll(db) where Bool.random() {
+                    player.score = Player.randomScore()
+                    try player.update(db)
+                }
+            }
+        }
     }
 }

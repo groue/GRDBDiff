@@ -56,44 +56,17 @@ extension PlayersViewController {
     }
     
     @IBAction func deletePlayers() {
-        try! dbPool.writeInTransaction { db in
-            try Player.deleteAll(db)
-            return .commit
-        }
+        try! AppDatabase.deletePlayers()
     }
     
-    @IBAction func refresh() {
-        try! dbPool.writeInTransaction { db in
-            if try Player.fetchCount(db) == 0 {
-                // Insert players
-                for _ in 0..<8 {
-                    var player = Player.random()
-                    try player.insert(db)
-                }
-            } else {
-                // Insert a player
-                if Bool.random() {
-                    var player = Player.random()
-                    try player.insert(db)
-                }
-                // Delete a random player
-                if Bool.random() {
-                    try Player.order(sql: "RANDOM()").limit(1).deleteAll(db)
-                }
-                // Update some players
-                for var player in try Player.fetchAll(db) where Bool.random() {
-                    player.score = Player.randomScore()
-                    try player.update(db)
-                }
-            }
-            return .commit
-        }
+    @IBAction func refreshPlayers() {
+        try! AppDatabase.refreshPlayers()
     }
     
     @IBAction func stressTest() {
         for _ in 0..<50 {
             DispatchQueue.global().async {
-                self.refresh()
+                try! AppDatabase.refreshPlayers()
             }
         }
     }
@@ -128,7 +101,7 @@ extension PlayersViewController {
         toolbarItems = [
             UIBarButtonItem(barButtonSystemItem: .trash, target: self, action: #selector(deletePlayers)),
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
-            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refresh)),
+            UIBarButtonItem(barButtonSystemItem: .refresh, target: self, action: #selector(refreshPlayers)),
             UIBarButtonItem(barButtonSystemItem: .flexibleSpace, target: nil, action: nil),
             UIBarButtonItem(title: "💣", style: .plain, target: self, action: #selector(stressTest)),
         ]
