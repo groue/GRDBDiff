@@ -15,11 +15,13 @@ class PlacesViewController: UIViewController {
             favoritesButton.isSelected = displaysFavorites
         }
     }
-    private var placesRequest: QueryInterfaceRequest<Place> {
+    /// The tracked annotations (all or only favorites)
+    private var annotationsRequest: QueryInterfaceRequest<PlaceAnnotation> {
+        // Turn requests of Place records to our PlaceAnnotation
         if displaysFavorites {
-            return Place.favorites()
+            return Place.favorites().asRequest(of: PlaceAnnotation.self)
         } else {
-            return Place.all()
+            return Place.all().asRequest(of: PlaceAnnotation.self)
         }
     }
     private var placeCountObserver: TransactionObserver?
@@ -110,7 +112,7 @@ extension PlacesViewController {
     func setupTitle() {
         // Track changes in the number of places
         placeCountObserver = try! ValueObservation
-            .trackingCount(placesRequest)
+            .trackingCount(annotationsRequest)
             .start(in: dbPool) { [unowned self] count in
                 switch count {
                 case 0: self.navigationItem.title = "No Place"
@@ -125,49 +127,44 @@ extension PlacesViewController {
 
 extension PlacesViewController: MKMapViewDelegate {
     private func setupMapView() {
-        // Let's use the ValueObservation.setDifferencesFromRequest(...)
-        // method provided by GRDBDiff in order to track the inserted, deleted,
-        // and updated place annotations.
-        //
-        // This method requires a request ordered by primary key.
-        let annotationsRequest = placesRequest
-            .orderByPrimaryKey()
-            .asRequest(of: PlaceAnnotation.self)
-        
         // The map may already contain place annotations.
-        //
-        // ValueObservation.setDifferencesFromRequest(...) wants this initial
-        // array to be ordered by primary key:
+        // Make sure they are sorted by primary key.
         let currentAnnotations = mapView.annotations
             .compactMap { $0 as? PlaceAnnotation }
-            .sorted { $0.place.id! < $1.place.id! }
+            .sorted { $0.id < $1.id }
         
-        // Removing and adding annotations in a map view is straightforward,
-        // but updating annotations needs a special care:
+        // Define the observation for inserted, deleted, and updated annotations.
         //
-        // It is a good practice to reuse instances of annotations, for best
-        // visual results, and preservation of the user's selection.
-        // However, the modifications must happen on the main thread.
-        annotationsObserver = try! ValueObservation
-            .trackingAll(annotationsRequest)
-            .setDifferencesFromRequest(startingFrom: currentAnnotations, onUpdate: { reusedAnnotation, newRow in
-                // Not on the main thread here: remember the new place, but
-                // wait for updateMapView(with:) below.
-                reusedAnnotation.newPlace = Place(row: newRow)
-                return reusedAnnotation
-            })
-            .start(in: dbPool) { [unowned self] diff in
-                // On the main thread
-                self.updateMapView(with: diff)
-            }
+        // Updates need a special care: we want to reuse annotation instances,
+        // for best visual results, and also so that we preserve the
+        // user selection.
+        //
+        // We update annotations in two steps:
+        //
+        // 1. PlaceAnnotation.reuse(annotation:withUpdatedRow:)
+        //    This method does not run on the main thread. It reuse annotations
+        //    and prepares the update that will happen on the main thread:
+        //
+        // 2. PlaceAnnotation.applyUpdate()
+        //    This method runs on the main thread.
+        let annotationsObservation = ValueObservation
+            .trackingAll(annotationsRequest.orderByPrimaryKey())
+            .setDifferencesFromRequest(
+                startingFrom: currentAnnotations,
+                onUpdate: PlaceAnnotation.reuse(annotation:withUpdatedRow:))
+        
+        // Start the observation
+        annotationsObserver = try! annotationsObservation.start(in: dbPool) { [unowned self] diff in
+            self.applyDiff(diff)
+        }
     }
     
-    private func updateMapView(with diff: SetDiff<PlaceAnnotation>) {
+    private func applyDiff(_ diff: SetDiff<PlaceAnnotation>) {
         mapView.removeAnnotations(diff.deleted)
         mapView.addAnnotations(diff.inserted)
         for annotation in diff.updated {
-            // See setupMapView() for an explanation.
-            annotation.place = annotation.newPlace!
+            // Apply the update prepared in setupMapView()
+            annotation.applyUpdate()
             
             // Update eventual annotation view if present
             if let view = mapView.view(for: annotation) as? MKMarkerAnnotationView {
@@ -252,9 +249,11 @@ private final class PlaceAnnotation:
         return place.coordinate
     }
     
-    /// Used during database observation.
-    /// See PlacesViewController.setupMapView().
-    var newPlace: Place?
+    /// The place id
+    var id: Int64 {
+        // Id is not nil since PlaceAnnotation feed from a database place.
+        return place.id!
+    }
     
     /// Part of the FetchableRecord protocol
     init(row: Row) {
@@ -264,5 +263,22 @@ private final class PlaceAnnotation:
     /// Part of the PersistableRecord protocol
     func encode(to container: inout PersistenceContainer) {
         place.encode(to: &container)
+    }
+    
+    // Place updates
+    
+    private var updatedPlace: Place?
+    static func reuse(annotation: PlaceAnnotation, withUpdatedRow updatedRow: Row) -> PlaceAnnotation {
+        // Not on the main thread here: remember the updated place until the
+        // applyUpdate method is called on the main thread.
+        // See PlacesViewController.setupMapView()
+        annotation.updatedPlace = Place(row: updatedRow)
+        return annotation
+    }
+    
+    func applyUpdate() {
+        // On the main thread: we can update the annotation
+        // See PlacesViewController.applyDiff(_:)
+        place = updatedPlace!
     }
 }
