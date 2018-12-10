@@ -1,4 +1,4 @@
-:construction: IN DEVELOPMENT - DON'T USE IN PRODUCTION :construction:
+:construction: EXPERIMENTAL - DON'T USE IN PRODUCTION :construction:
 
 GRDBDiff
 ========
